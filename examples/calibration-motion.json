@@ -1,0 +1,13 @@
+{
+  "purpose": "calibration",
+  "phrase": "Rig calibration — NOT ASL",
+  "language": "ASL",
+  "source": "Signa technical rig test; no linguistic meaning",
+  "license": "CC0-1.0",
+  "duration": 4,
+  "keyframes": [
+    {"time":0,"rotations":{"elbowL":[0,0,0],"elbowR":[0,0,0]}},
+    {"time":2,"rotations":{"elbowL":[-0.7,0,0],"elbowR":[-0.7,0,0]}},
+    {"time":4,"rotations":{"elbowL":[0,0,0],"elbowR":[0,0,0]}}
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "job_id": "2fcb14f5d8d4454799fc6ffca7f14648",
+  "sample": "Pre-existing synthetic avatar demo.wav",
+  "profile": "balanced / small.en",
+  "wall_seconds": 8.08,
+  "duration": 15.7,
+  "transcript": [
+    "Hello.",
+    "Please.",
+    "Book.",
+    "My name is...",
+    "Bye."
+  ],
+  "asr_report": {
+    "decoded_audio_end": 15.7,
+    "timeline_seconds": 15.7,
+    "processed_seconds": 15.7,
+    "processed_ranges": [
+      [
+        0.0,
+        15.7
+      ]
+    ],
+    "chunks": 1,
+    "retry_count": 0,
+    "recovered_words": 0,
+    "suspect_spans": [],
+    "warnings": [],
+    "review_words": 0,
+    "word_count": 7,
+    "mode": "speech",
+    "algorithm": "overlap-audit-v2",
+    "complete_timeline": true,
+    "model": "small.en"
+  },
+  "sign_plan": {
+    "mode": "dictionary_assistance",
+    "items": [
+      {
+        "segment_index": 0,
+        "start": 0,
+        "end": 0.44,
+        "text": "hello",
+        "status": "timing_review",
+        "clip": {
+          "id": "hello",
+          "phrase": "Hello",
+          "source": "https://github.com/StudioGalt/Sign-Language-Mocap-Archive/blob/main/SG%20ASL%20Dictionary/ASL%20H/SG%20ASL%20Hello%202024-6-9%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20Hello%202024-6-9%20Mesh.fbx",
+          "download": "https://raw.githubusercontent.com/StudioGalt/Sign-Language-Mocap-Archive/main/SG%20ASL%20Dictionary/ASL%20H/SG%20ASL%20Hello%202024-6-9%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20Hello%202024-6-9%20Mesh.fbx",
+          "sha": "6f401b1d5722ffefd6ab5e58fb1f2e87fb4a7589",
+          "license": "CC0-1.0",
+          "duration": 2.200000047683716,
+          "animation_asset": "hello",
+          "keyframes": [],
+          "status": "source",
+          "purpose": "sign",
+          "language": "ASL",
+          "dropped_tracks": 0
+        },
+        "word_count": 1,
+        "timing": "aligned"
+      },
+      {
+        "segment_index": 1,
+        "start": 2.84,
+        "end": 3.26,
+        "text": "please",
+        "status": "timing_review",
+        "clip": {
+          "id": "please",
+          "phrase": "Please",
+          "source": "https://github.com/StudioGalt/Sign-Language-Mocap-Archive/blob/main/SG%20ASL%20Dictionary/ASL%20P/SG%20ASL%20Please%202024-10-13%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20Please%202024-10-13%20Mesh.fbx",
+          "download": "https://raw.githubusercontent.com/StudioGalt/Sign-Language-Mocap-Archive/main/SG%20ASL%20Dictionary/ASL%20P/SG%20ASL%20Please%202024-10-13%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20Please%202024-10-13%20Mesh.fbx",
+          "sha": "32c351f8ee6a3a2f90d6a8cf9e40813217e8dfd3",
+          "license": "CC0-1.0",
+          "duration": 2.049999952316284,
+          "animation_asset": "please",
+          "keyframes": [],
+          "status": "source",
+          "purpose": "sign",
+          "language": "ASL",
+          "dropped_tracks": 0
+        },
+        "word_count": 1,
+        "timing": "aligned"
+      },
+      {
+        "segment_index": 2,
+        "start": 5.52,
+        "end": 5.78,
+        "text": "book",
+        "status": "timing_review",
+        "clip": {
+          "id": "book",
+          "phrase": "Book",
+          "source": "https://github.com/StudioGalt/Sign-Language-Mocap-Archive/blob/main/SG%20ASL%20Dictionary/ASL%20B/SG%20ASL%20Book%202%202024-6-9%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20Book%202%202024-6-9%20Mesh.fbx",
+          "download": "https://raw.githubusercontent.com/StudioGalt/Sign-Language-Mocap-Archive/main/SG%20ASL%20Dictionary/ASL%20B/SG%20ASL%20Book%202%202024-6-9%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20Book%202%202024-6-9%20Mesh.fbx",
+          "sha": "57dc3c30731bb440d86ceedfc7cd9604993b9afd",
+          "license": "CC0-1.0",
+          "duration": 3.2666666507720947,
+          "animation_asset": "book",
+          "keyframes": [],
+          "status": "source",
+          "purpose": "sign",
+          "language": "ASL",
+          "dropped_tracks": 0
+        },
+        "word_count": 1,
+        "timing": "aligned"
+      },
+      {
+        "segment_index": 3,
+        "start": 8.88,
+        "end": 11.28,
+        "text": "my name is",
+        "status": "source_preview",
+        "clip": {
+          "id": "my-name-is",
+          "phrase": "My Name Is",
+          "source": "https://github.com/StudioGalt/Sign-Language-Mocap-Archive/blob/main/SG%20ASL%20Dictionary/ASL%20M/SG%20ASL%20My%20Name%20Is%202024-6-9%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20My%20Name%20Is%202024-6-9%20Mesh.fbx",
+          "download": "https://raw.githubusercontent.com/StudioGalt/Sign-Language-Mocap-Archive/main/SG%20ASL%20Dictionary/ASL%20M/SG%20ASL%20My%20Name%20Is%202024-6-9%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20My%20Name%20Is%202024-6-9%20Mesh.fbx",
+          "sha": "5bfecf691d4bdec66603981569178477e25fb209",
+          "license": "CC0-1.0",
+          "duration": 2.200000047683716,
+          "animation_asset": "my-name-is",
+          "keyframes": [],
+          "status": "source",
+          "purpose": "sign",
+          "language": "ASL",
+          "dropped_tracks": 0
+        },
+        "word_count": 3,
+        "timing": "aligned"
+      },
+      {
+        "segment_index": 4,
+        "start": 12.24,
+        "end": 12.44,
+        "text": "bye",
+        "status": "timing_review",
+        "clip": {
+          "id": "bye",
+          "phrase": "Bye",
+          "source": "https://github.com/StudioGalt/Sign-Language-Mocap-Archive/blob/main/SG%20ASL%20Dictionary/ASL%20B/SG%20ASL%20Bye%202024-9-7%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20Bye%202024-9-7%20Mesh.fbx",
+          "download": "https://raw.githubusercontent.com/StudioGalt/Sign-Language-Mocap-Archive/main/SG%20ASL%20Dictionary/ASL%20B/SG%20ASL%20Bye%202024-9-7%20Upload/FBX%20Files/Game%20Ready/SG%20ASL%20Bye%202024-9-7%20Mesh.fbx",
+          "sha": "bc9ce1ed8b832adb5788c5795ee9f06e0e8b3dfd",
+          "license": "CC0-1.0",
+          "duration": 2.9833333492279053,
+          "animation_asset": "bye",
+          "keyframes": [],
+          "status": "source",
+          "purpose": "sign",
+          "language": "ASL",
+          "dropped_tracks": 0
+        },
+        "word_count": 1,
+        "timing": "aligned"
+      }
+    ],
+    "total": 5,
+    "matched": 0,
+    "source_previews": 1,
+    "timing_review": 4,
+    "unsupported_rig": 0,
+    "missing": 0,
+    "covered_words": 3,
+    "total_words": 7,
+    "coverage": 43,
+    "missing_words": []
+  }
+}

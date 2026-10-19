@@ -1,0 +1,17 @@
+{
+  "name": "signa",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/dev.mjs",
+    "build": "npm --prefix frontend run build",
+    "test": "backend\\.venv\\Scripts\\python.exe -m unittest discover -s backend/tests -v",
+    "test:playback": "node scripts/test-playback.mjs",
+    "test:media": "node scripts/test-playback-media.mjs",
+    "test:avatar": "node scripts/test-avatar.mjs",
+    "test:interpreter": "node scripts/test-interpreter.mjs",
+    "setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1",
+    "model": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-model.ps1",
+    "test:framing": "node scripts/test-framing.mjs"
+  }
+}

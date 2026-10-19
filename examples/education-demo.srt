@@ -1,0 +1,12 @@
+1
+00:00:00,000 --> 00:00:02,620
+Welcome to our learning platform.
+
+2
+00:00:02,620 --> 00:00:06,140
+Every student deserves access to education.
+
+3
+00:00:06,140 --> 00:00:09,240
+Please open your book and read the first lesson.
+

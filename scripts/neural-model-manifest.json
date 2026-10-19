@@ -1,0 +1,20 @@
+{
+  "source_repository": "https://github.com/2000ZRL/MaDiS.git",
+  "source_commit": "071828ea1b94530dc7ff0a6c009c0a7c6d1f0784",
+  "repository": "2000zrl/MaDiS",
+  "revision": "ceaed59c964820f2c13401a0870b2988686956ad",
+  "license": "CC-BY-NC-ND-4.0",
+  "files": [
+    {"path":"sft_how2sign.ckpt","size":6295891758,"sha256":"d3953f89a74a2b2a8bbce6a9dd9aba4751c81c03e2d8fe8511f0ae7ce2727302"},
+    {"path":"Qwen3-0.6B-Base-en-zh-de.zip","size":902653548,"sha256":"e19ba40a28eff22033873dab369053b767dcbc6fd889ceeb7dd2f1c686046ee6"},
+    {"path":"mean.pt","size":1909,"sha256":"38041ea364a5b1e187f7d633edd3ae564e1f8771506b7390fee48e80e3de0c23"},
+    {"path":"std.pt","size":1904,"sha256":"88ed5e7e9f484d35908088a22295fb6a8c05e1ad50f6dcf2018a253aa6bffee4"}
+  ],
+  "optional_unused_tokenizer": {"path":"tokenizer.ckpt","size":1769650101,"sha256":"fcc63962aa3c6451fde09c4c8c8236b2b2bde2d37cc1e17b1131eb8d70aae8a9"},
+  "torch": {
+    "path":"torch-2.5.0+cpu-cp311-cp311-win_amd64.whl",
+    "url":"https://download-r2.pytorch.org/whl/cpu/torch-2.5.0%2Bcpu-cp311-cp311-win_amd64.whl",
+    "size":205487204,
+    "sha256":"690954a8becf12a04e64f08fe84f1a9c9dcbf12b07d481f89809d2cfc55a1038"
+  }
+}
