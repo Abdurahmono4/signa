@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import * as THREE from '../frontend/node_modules/three/build/three.module.js';
+import {FBXLoader} from '../frontend/node_modules/three/examples/jsm/loaders/FBXLoader.js';
+THREE.TextureLoader.prototype.load=function(url){const t=new THREE.Texture();t.name=url;return t};
+const b=fs.readFileSync(new URL('../assets/avatars/rocketbox-female-01/female.fbx',import.meta.url));
+const model=new FBXLoader().parse(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
+const bones=[],meshes=[];
+model.traverse(o=>{if(o.isBone)bones.push(o.name);if(o.isMesh)meshes.push({name:o.name,materials:(Array.isArray(o.material)?o.material:[o.material]).map(m=>({name:m.name,map:m.map?.name,alpha:m.alphaMap?.name})),morphs:Object.keys(o.morphTargetDictionary||{}),verts:o.geometry.attributes.position.count})});
+model.updateMatrixWorld(true);
+const report={bones,meshes,bounds:new THREE.Box3().setFromObject(model),animations:model.animations.map(a=>({name:a.name,duration:a.duration}))};
+fs.writeFileSync(new URL('../docs/research/rocketbox-rig.json',import.meta.url),JSON.stringify(report,null,2));
+console.log(JSON.stringify(report));

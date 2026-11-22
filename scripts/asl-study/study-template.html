@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="uz">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:; base-uri 'none'; form-action 'none'">
+<title>SignBridge UZ · ASL</title>
+<style>
+:root{color-scheme:dark;font:16px/1.55 Inter,"Segoe UI",sans-serif;background:#0c1220;color:#f4f6ff}*{box-sizing:border-box}body{margin:0}main{width:min(740px,100%);margin:auto;padding:20px clamp(14px,4vw,34px) 40px}header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0 20px;border-bottom:1px solid #354159}header strong{font-size:1.12rem}header span{color:#99baff}h1{font-size:clamp(1.5rem,4.5vw,2.2rem);line-height:1.18;margin:24px 0 16px}p{margin:12px 0;color:#d1daed}label,legend{font-weight:600}textarea,select,input,button{font:inherit}select,textarea{background:#172238;color:#f4f6ff;border:1px solid #7486a5;border-radius:8px;padding:8px 12px}textarea{display:block;width:100%;min-height:82px;resize:vertical}select{max-width:100%}input{accent-color:#9dbaff}button{cursor:pointer;border:1px solid #97baff;background:#bad1ff;color:#10223d;border-radius:9px;font-weight:700;padding:9px 18px}button:disabled{opacity:.5;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible,video:focus-visible{outline:3px solid #ffcd73;outline-offset:3px}fieldset{display:grid;gap:8px;border:1px solid #54617a;border-radius:10px;padding:12px 16px;margin:16px 0}fieldset label,.check{font-weight:400}.row{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-top:18px}.check{display:block;margin:6px 0 12px}.help,small,summary{color:#b9c9e2}video{display:block;width:100%;max-height:52vh;background:#10151d;border-radius:10px;margin:10px 0 16px}progress{width:100%;height:6px;accent-color:#92b7ff}summary{cursor:pointer}details{margin:24px 0}section:focus{outline:none}.warn{color:#ffd285}[hidden]{display:none!important}
+</style>
+<main>
+<header><strong>SignBridge <span>UZ</span></strong><select id="language" aria-label="Til / Language"><option value="uz">O‘zbekcha</option><option value="en">English</option></select></header>
+<section id="intro" tabindex="-1">
+<h1 data-t="title"></h1><p data-t="instructions"></p><p data-t="privacy"></p>
+<fieldset><legend data-t="participation"></legend>
+<label><input type="radio" name="mode" value="review"> <span data-t="review"></span></label>
+<label><input type="radio" name="mode" value="practice"> <span data-t="practice"></span></label>
+</fieldset>
+<button id="begin" disabled data-t="begin"></button>
+<details><summary data-t="credits"></summary><p>How2Sign · Duarte et al., CVPR 2021 · CC BY-NC 4.0. MaDiS-How2Sign · CC BY-NC-ND 4.0. Microsoft Rocketbox · MIT. SignBridge UZ.</p></details>
+</section>
+<section id="trial" hidden tabindex="-1">
+<p id="counter" aria-live="polite"></p><progress id="progress" max="10" value="0" aria-label="Sinov / Study"></progress>
+<h1 data-t="question"></h1><video id="player" controls playsinline muted preload="auto" aria-label="ASL"></video>
+<label for="meaning" data-t="write"></label><textarea id="meaning" maxlength="1500" autocomplete="off"></textarea>
+<label class="check"><input id="unknown" type="checkbox"> <span data-t="unknown"></span></label>
+<label for="clarity" data-t="clarity"></label>
+<select id="clarity"><option value="" data-t="choose"></option><option value="clear" data-t="clear"></option><option value="partly" data-t="partly"></option><option value="unclear" data-t="unclear"></option><option value="unsure" data-t="unsure"></option></select>
+<p id="playError" class="warn" role="alert" hidden></p>
+<div class="row"><small id="watchHint" role="status"></small><button id="advance" disabled></button></div>
+</section>
+<section id="end" hidden tabindex="-1"><h1 data-t="done"></h1><p id="resultMsg"></p><button id="save" data-t="save"></button><p role="status" id="saved"></p></section>
+</main>
+<script id="study-data" type="application/json">__STUDY_DATA__</script>
+<script>
+'use strict';
+const bundle=JSON.parse(document.getElementById('study-data').textContent);
+const el=id=>document.getElementById(id);
+const words={
+ uz:{title:'ASL ijrosini tushunish sinovi',instructions:'10 ta ovozsiz lavhani ko‘rasiz. Har birida tushungan mazmuningizni o‘zingizga qulay tilda yozing. Lavhani qayta ko‘rishingiz mumkin. Iltimos, javob berishdan oldin asl matnni yoki boshqalarning javoblarini ko‘rmang.',privacy:'Ism so‘ralmaydi. Javoblar qurilmangizda turadi. Oxirida ularni fayl qilib saqlashingiz va o‘zingiz xohlasangiz baholovchiga berishingiz mumkin.',participation:'Qanday qatnashyapsiz?',review:'ASL jumlalarini mustaqil tushunaman va bu sinov lavhalarini avval ko‘rmaganman.',practice:'Mashq uchun ochdim. Bu javoblar tadqiqot hisobiga kirmaydi.',begin:'Sinovni boshlash',credits:'Material manbalari',clip:'Lavha',question:'Ijrochi nima dedi?',write:'Tushungan mazmuningiz',unknown:'Mazmunini anglay olmadim.',clarity:'Qo‘l shakli va harakati qanday ko‘rindi?',choose:'Tanlang',clear:'Aniq',partly:'Qisman aniq',unclear:'Noaniq',unsure:'Baholay olmayman',next:'Keyingi lavha',finish:'Yakunlash',watch:'Javobni saqlash uchun lavhani bir marta oxirigacha ko‘ring.',reply:'Javob va qo‘l aniqligi bahosini kiriting.',canNext:'Javob keyingi tugma bilan saqlanadi.',videoError:'Video ochilmadi. Bu lavha texnik uzilish sifatida qayd etiladi.',skip:'Texnik uzilishni qayd etish',done:'Sinov yakunlandi',message:'Javoblaringizni saqlang. Tushungan mazmuningizni mustaqil ASL baholovchi asl jumlalar bilan solishtiradi.',demoMessage:'Mashq yakunlandi. Fayl mashq sifatida belgilanadi.',save:'Javoblar faylini saqlash',saved:'Saqlash uchun JSON fayli tayyorlandi.'},
+ en:{title:'ASL comprehension study',instructions:'Watch ten silent clips. After each clip, write what you understood in any language you are comfortable writing. You can replay each clip. Please answer before looking at the original sentences or anyone else’s responses.',privacy:'No name is requested. Answers stay on your device. At the end you can save a file and choose whether to give it to the study organizer.',participation:'How are you participating?',review:'I understand ASL sentences independently and have not seen these study clips before.',practice:'I am trying the exercise. My answers should be excluded from the study.',begin:'Start study',credits:'Material credits',clip:'Clip',question:'What did the signer say?',write:'In your own words',unknown:'I could not understand the message.',clarity:'How clear were the hand shapes and movements?',choose:'Select an answer',clear:'Clear',partly:'Partly clear',unclear:'Unclear',unsure:'Unable to judge',next:'Next clip',finish:'Finish',watch:'Watch the entire clip once before saving your answer.',reply:'Enter a response and rate hand clarity.',canNext:'Continue to record your response.',videoError:'This clip could not play. Record a technical failure for this item.',skip:'Record playback failure',done:'Study complete',message:'Save your answers. An independent ASL reviewer will compare your interpretation with the intended meanings.',demoMessage:'Practice complete. Your file will be marked as practice.',save:'Save responses',saved:'Your JSON response file is ready to save.'}
+};
+let lang='uz', order=[], responses=[], form, purpose, session, currentUrl, watched=false, failed=false, completedPlays=0, downloaded=false;
+const t=key=>words[lang][key];
+function localize(){
+ lang=el('language').value;document.documentElement.lang=lang;
+ for(const n of document.querySelectorAll('[data-t]'))n.textContent=t(n.dataset.t);
+ document.title='SignBridge UZ · '+t('title');
+ if(!el('trial').hidden)refresh();
+ if(!el('end').hidden)el('resultMsg').textContent=t(purpose==='practice'?'demoMessage':'message');
+}
+function show(id){
+ for(const n of ['intro','trial','end'])el(n).hidden=n!==id;
+ el(id).focus();
+}
+function choose(n){return Math.floor(crypto.getRandomValues(new Uint32Array(1))[0]/4294967296*n)}
+function shuffle(items){
+ for(let i=items.length-1;i>0;i--){const j=choose(i+1);[items[i],items[j]]=[items[j],items[i]]}
+ return items;
+}
+const video=el('player');
+function resetMedia(){
+ if(currentUrl){video.removeAttribute('src');video.load();URL.revokeObjectURL(currentUrl);currentUrl=null}
+}
+function loadTrial(){
+ resetMedia();watched=false;failed=false;completedPlays=0;
+ el('meaning').value='';el('unknown').checked=false;el('clarity').value='';el('playError').hidden=true;
+ const bytes=Uint8Array.from(atob(bundle.media[order[responses.length]]),c=>c.charCodeAt(0));
+ currentUrl=URL.createObjectURL(new Blob([bytes],{type:'video/mp4'}));
+ video.src=currentUrl;video.load();refresh();
+}
+function ready(){return failed || (watched && (el('unknown').checked || el('meaning').value.trim().length>0) && !!el('clarity').value)}
+function refresh(){
+ el('counter').textContent=t('clip')+' '+(responses.length+1)+' / '+order.length;
+ el('progress').value=responses.length;el('progress').max=order.length;
+ el('meaning').disabled=failed||el('unknown').checked;el('unknown').disabled=failed;el('clarity').disabled=failed;
+ el('playError').hidden=!failed;el('playError').textContent=failed?t('videoError'):'';
+ el('watchHint').textContent=failed?'':t(!watched?'watch':ready()?'canNext':'reply');
+ el('advance').disabled=!ready();el('advance').textContent=t(failed?'skip':responses.length===order.length-1?'finish':'next');
+}
+el('language').onchange=localize;
+document.querySelectorAll('[name=mode]').forEach(r=>r.onchange=()=>{el('begin').disabled=false});
+el('begin').onclick=()=>{
+ purpose=document.querySelector('[name=mode]:checked').value;
+ form=['#A','#B'].includes(location.hash)?location.hash.slice(1):choose(2)?'A':'B';
+ order=shuffle([...bundle.forms[form]]);session=Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>n.toString(16).padStart(2,'0')).join('');
+ show('trial');loadTrial();
+};
+video.onended=()=>{
+ if(!currentUrl || video.currentSrc!==currentUrl)return;
+ let seconds=0;for(let i=0;i<video.played.length;i++)seconds+=video.played.end(i)-video.played.start(i);
+ if(seconds>=.9*video.duration){watched=true;completedPlays++}refresh();
+};
+video.onerror=()=>{if(currentUrl && video.currentSrc===currentUrl && video.error){failed=true;refresh()}};
+for(const name of ['meaning','unknown','clarity'])el(name).addEventListener('input',refresh);
+el('advance').onclick=()=>{
+ if(!ready())return;
+ responses.push({stimulus:order[responses.length],status:failed?'playback_failure':el('unknown').checked?'not_understood':'paraphrase',
+  meaning:failed||el('unknown').checked?'':el('meaning').value.trim(),hand_clarity:failed?null:el('clarity').value,completed_plays:completedPlays});
+ if(responses.length<order.length){loadTrial();el('trial').focus();return}
+ resetMedia();show('end');localize();
+};
+el('save').onclick=()=>{
+ const record={protocol:bundle.protocol,session,form,purpose,locale:lang,responses};
+ const url=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)],{type:'application/json'}));
+ const a=document.createElement('a');a.href=url;a.download='SignBridge-ASL-'+session+'.json';a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),10000);downloaded=true;el('saved').textContent=t('saved');
+};
+window.addEventListener('beforeunload',e=>{if(responses.length&&!downloaded){e.preventDefault();e.returnValue=''}});
+localize();
+</script>
+</html>

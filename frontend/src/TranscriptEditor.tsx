@@ -1,23 +1,14 @@
-import {useEffect,useRef,useState} from 'react';
-import {Plus,Save,Trash2,X} from 'lucide-react';
-import type {Job} from './QualityPanel';
-
-export function TranscriptEditor({job,onClose,onSave}:{job:Job;onClose:()=>void;onSave:(segments:{start:number;end:number;text:string}[])=>Promise<void>}){
- const [rows,setRows]=useState(job.segments.map(s=>({start:s.start,end:s.end,text:s.text})));
- const [error,setError]=useState('');const [saving,setSaving]=useState(false);
- const dialog=useRef<HTMLElement>(null);const close=useRef(onClose);close.current=onClose;
- useEffect(()=>{
-  const previous=document.activeElement as HTMLElement|null;
-  const focusable=()=>Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input,textarea')||[]);
-  focusable()[0]?.focus();
-  const keydown=(event:KeyboardEvent)=>{
-   if(event.key==='Escape'){event.preventDefault();close.current()}
-   if(event.key==='Tab'){const items=focusable();const first=items[0],last=items.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}}
-  };
-  document.addEventListener('keydown',keydown);
-  return()=>{document.removeEventListener('keydown',keydown);previous?.focus()};
- },[]);
- const update=(i:number,key:'start'|'end'|'text',value:string)=>setRows(rows.map((row,n)=>n===i?{...row,[key]:key==='text'?value:Number(value)}:row));
- async function save(){setSaving(true);try{await onSave(rows);onClose()}catch(e){setError((e as Error).message)}finally{setSaving(false)}}
- return <div className="modal-backdrop"><section ref={dialog} className="card transcript-editor" role="dialog" aria-modal="true" aria-labelledby="editor-title"><div className="card-heading"><h2 id="editor-title">Matn va vaqtlarni tahrirlash</h2><button className="icon-button" aria-label="Tahrirlashni yopish" onClick={onClose}><X/></button></div><p>Vaqtlar soniyada. Eski natija versiyalar tarixida saqlanadi. O‘zgartirilgan satrlarda so‘zma-so‘z vaqtlar qayta hisoblanmaydi.</p><div className="editor-rows">{rows.map((row,i)=><div className="editor-row" key={i}><span>{i+1}</span><label>Boshlanish<input type="number" min="0" step="0.01" aria-label={`${i+1}-satr boshlanishi`} value={row.start} onChange={e=>update(i,'start',e.target.value)}/></label><label>Tugash<input type="number" min="0" step="0.01" aria-label={`${i+1}-satr tugashi`} value={row.end} onChange={e=>update(i,'end',e.target.value)}/></label><textarea aria-label={`${i+1}-satr matni`} value={row.text} onChange={e=>update(i,'text',e.target.value)}/><button className="icon-button" aria-label={`${i+1}-satrni olib tashlash`} onClick={()=>setRows(rows.filter((_,n)=>n!==i))}><Trash2 size={16}/></button></div>)}</div>{error&&<p role="alert" className="inline-error">{error}</p>}<div className="editor-actions"><button className="secondary" onClick={()=>setRows([...rows,{start:rows.at(-1)?.end||0,end:Math.min(job.duration,(rows.at(-1)?.end||0)+1),text:''}])}><Plus size={14}/> Satr qo‘shish</button><button className="primary" disabled={saving} onClick={save}><Save size={15}/>{saving?'Saqlanmoqda…':'Saqlash'}</button></div></section></div>;
+import {useState} from 'react';
+import {requestSignal} from './flowGuards';
+type Segment={text:string;start:number;end:number};
+export default function TranscriptEditor({jobId,segments,revision,disabled,onSaved}:{jobId:string;segments:Segment[];revision:number;disabled:boolean;onSaved:()=>Promise<void>}){
+ const [draft,setDraft]=useState(()=>segments.map(s=>s.text)),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const changed=draft.some((t,i)=>t.trim()!==segments[i].text);
+ async function save(){setBusy(true);setError('');try{
+  const response=await fetch(`/api/jobs/${jobId}/transcript`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({expected_revision:revision,segments:segments.map((s,i)=>({start:s.start,end:s.end,text:draft[i].trim()}))}),signal:requestSignal()});
+  const value=await response.json();if(!response.ok)throw Error(typeof value.detail==='string'?value.detail:'Matn saqlanmadi.');await onSaved();
+ }catch(e){setError(String(e))}finally{setBusy(false)}}
+ return <details className="transcript-editor"><summary>Nutq matnidagi xatoni tuzatish</summary><p>Inglizcha matnni audio bilan solishtiring. Saqlagach qamrov yangilanadi; avatar harakati va MP4ni qayta tayyorlash kerak bo‘ladi.</p>
+ {segments.map((s,i)=><label key={i}>{s.start.toFixed(2)}–{s.end.toFixed(2)} s<textarea aria-label={`${i+1}-bo‘lak matni`} maxLength={8000} disabled={busy||disabled} value={draft[i]} onChange={e=>setDraft(d=>d.map((v,n)=>n===i?e.target.value:v))}/></label>)}
+ <button disabled={disabled||busy||!changed||draft.some(t=>!t.trim())} onClick={save}>{busy?'Saqlanmoqda…':'Matnni saqlash va qamrovni yangilash'}</button>{error&&<p role="alert">{error}</p>}</details>;
 }

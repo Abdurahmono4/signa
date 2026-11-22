@@ -1,0 +1,27 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import * as THREE from '../frontend/node_modules/three/build/three.module.js';
+import {GLTFLoader} from '../frontend/node_modules/three/examples/jsm/loaders/GLTFLoader.js';
+const raw=fs.readFileSync(new URL('../assets/avatars/rocketbox-female-01/female.glb',import.meta.url));
+const length=raw.readUInt32LE(12),doc=JSON.parse(raw.subarray(20,20+length));
+assert.equal(doc.images.length,3);assert.equal(doc.skins.length,1);
+assert.ok(doc.images.every(i=>doc.bufferViews[i.bufferView].byteLength>1000));
+assert.ok(doc.materials.every(m=>m.pbrMetallicRoughness.baseColorTexture));
+// Geometry-only parser audit. The browser alone confirms actual texture/render quality.
+doc.images=[];doc.textures=[];
+for(const material of doc.materials)delete material.pbrMetallicRoughness.baseColorTexture;
+let json=Buffer.from(JSON.stringify(doc));json=Buffer.concat([json,Buffer.alloc((4-json.length%4)%4,32)]);
+const binary=raw.subarray(20+length),header=Buffer.from(raw.subarray(0,12));header.writeUInt32LE(20+json.length+binary.length,8);
+const chunk=Buffer.alloc(8);chunk.writeUInt32LE(json.length);chunk.writeUInt32LE(0x4e4f534a,4);
+const clean=Buffer.concat([header,chunk,json,binary]);
+const gltf=await new GLTFLoader().parseAsync(clean.buffer.slice(clean.byteOffset,clean.byteOffset+clean.byteLength),'');
+const bones=[];let morphs=0;
+gltf.scene.traverse(node=>{if(node.isBone)bones.push(node);if(node.isMesh)morphs=Math.max(morphs,node.morphTargetInfluences?.length||0);});
+assert.ok(bones.length>=80);assert.equal(morphs,52);
+for(const side of ['L','R'])for(let finger=0;finger<5;finger++)for(const suffix of ['', '1','2'])assert.ok(bones.find(b=>b.name===`Bip01_${side}_Finger${finger}${suffix}`));
+gltf.scene.updateMatrixWorld(true);
+const box=new THREE.Box3().setFromObject(gltf.scene);
+assert.ok(box.max.y-box.min.y>1.5&&box.max.y-box.min.y<1.9);
+gltf.scene.traverse(node=>assert.ok(node.matrixWorld.elements.every(Number.isFinite)));
+console.log(JSON.stringify({bones:bones.length,fingerJoints:30,faceMorphs:morphs,embeddedTextures:3,height:box.max.y-box.min.y,visualBrowserValidation:false,signLanguageValidation:false}));
+export const naturalModel=gltf.scene;

@@ -1,0 +1,10 @@
+from pathlib import Path
+p=Path('frontend/src/main.tsx');s=p.read_text(encoding='utf-8')
+s=s.replace('status:string;progress:number;phase:string;',"status:string;progress:number;phase:string;language?:'en'|'uz';")
+s=s.replace(" async function generateMotion(){if(!job)return;setError('');", " const autoRequested=useRef(new Set<string>());\n useEffect(()=>{if(job?.status==='ready'&&settings.engine==='neural'&&settings.language==='en'&&modelReady&&neural?.status==='idle'&&!autoRequested.current.has(job.id)){autoRequested.current.add(job.id);void generateMotion()}},[job?.id,job?.status,settings.engine,settings.language,modelReady,neural?.status]);\n async function generateMotion(){if(!job)return;autoRequested.current.add(job.id);setError('');")
+needle="{page==='studio'?<><div className=\"tabs\">"
+replacement="""{page==='studio'?<><div className="output-choice"><h2>Natija usulini tanlang</h2><div className="actions"><button disabled={working} className={settings.engine==='human'?'primary':''} onClick={()=>setSettings(s=>({...s,engine:'human'}))}>Inson tarjimon videosi</button><button disabled={working||settings.language!=='en'||!modelReady} className={settings.engine==='neural'?'primary':''} onClick={()=>setSettings(s=>({...s,engine:'neural'}))}>ML avatari — avtomatik</button></div><p>{settings.engine==='human'?'Tez rejim: kutubxonadagi mos to‘liq iboralar inson videosi bilan ko‘rsatiladi.':'Nutq tahlili tugagach ML harakati avtomatik tayyorlanadi. CPU’da kutish kerak; jarayonni bekor qilish mumkin. Natija lingvistik tasdiqsiz tajriba.'}</p></div><div className="tabs">"""
+assert needle in s;s=s.replace(needle,replacement)
+s=s.replace("onUse={c=>{setPage('studio');", "onUse={c=>{setSettings(s=>({...s,engine:'human'}));setPage('studio');")
+p.write_text(s,encoding='utf-8')
+p=Path('frontend/src/style.css');p.write_text(p.read_text(encoding='utf-8')+'\n.output-choice{border-bottom:1px solid #303b57;padding-bottom:14px;margin-bottom:22px}.output-choice h2{font-size:15px}.output-choice p{font-size:12px;margin:14px 0 0}\n',encoding='utf-8')

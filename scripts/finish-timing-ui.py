@@ -1,0 +1,13 @@
+from pathlib import Path
+p=Path('frontend/src/main.tsx');s=p.read_text(encoding='utf-8')
+s=s.replace('type Sequence={items:Item[];coverage:number;supported_words:number;total_words:number}', 'type Sequence={items:Item[];coverage:number;supported_words:number;total_words:number;timing_scale?:number;output_duration?:number}')
+s=s.replace(" const items=settings.engine", " const playbackScale=settings.engine==='neural'?(generated?.timing_scale||1):1;\n useEffect(()=>{if(media.current)media.current.playbackRate=1/playbackScale},[playbackScale,page,mode,job?.id]);\n const items=settings.engine")
+s=s.replace('setTime(media.current.currentTime)', 'setTime(media.current.currentTime*playbackScale)')
+s=s.replace('},[playing,sequence]);','},[playing,sequence,generated,settings.engine]);')
+s=s.replace('setTime(e.currentTarget.currentTime)', 'setTime(e.currentTarget.currentTime*playbackScale)')
+s=s.replace('Nutq vaqtiga moslashda harakat siqilishi mumkin.', 'Harakat ko‘pi bilan 1.25× tezlikda ijro etiladi. Zarur bo‘lsa video va audio birga sekinlashadi.')
+s=s.replace("{neural&&<p>", "{settings.engine==='neural'&&generated&&<p>Video/audio vaqti: {playbackScale.toFixed(2)}× · yakuniy uzunlik: {generated.output_duration?.toFixed(1)} s</p>}{neural&&<p>")
+s=s.replace('<h3>Natija tayyor</h3>', '<h3>Natija tayyor</h3><a href={`/api/jobs/${job.id}/report`} target="_blank" rel="noreferrer">Tahlil va eksport hisoboti</a>')
+s=s.replace('const [search,setSearch]', 'const [search,setSearch]')
+s=s.replace('<CorpusLibrary dataset={dataset}', '<CorpusLibrary onUpdated={()=>api<CorpusState>(\'/how2sign\').then(setDataset)} dataset={dataset}')
+p.write_text(s,encoding='utf-8')

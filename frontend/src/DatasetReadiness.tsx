@@ -1,0 +1,11 @@
+import {useEffect,useState} from 'react';
+type Split={split:string;state:string;csv_rows:number|null;archive_clips:number|null;matched_clips:number|null;missing_clips:number|null;downloads_in_progress:number;message?:string};
+type Inventory={splits:Split[]};
+const labels:Record<string,string>={train:'Train — iboralar manbasi',val:'Validation — manba ko‘rigi',test:'Test — mustaqil baholash'};
+const states:Record<string,string>={missing:'Fayllar kutilmoqda',metadata_only:'CSV bor, video ZIP kutilmoqda',downloading:'Yuklanmoqda — arxiv ochilmadi',metadata_missing:'ZIP bor, CSV yetishmayapti',indexed:'CSV va ZIP nomlari mos',incomplete:'Ayrim kliplar yetishmaydi',invalid:'Fayllarni tekshirish kerak'};
+export default function DatasetReadiness(){
+ const [data,setData]=useState<Inventory|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ async function refresh(signal?:AbortSignal){setBusy(true);try{const r=await fetch('/api/how2sign/dataset/status',{signal});if(!r.ok)throw Error('Dataset holati olinmadi.');const d=await r.json();if(!signal?.aborted){setData(d);setError('')}}catch{if(!signal?.aborted)setError('Dataset holatini tekshirib bo‘lmadi.')}finally{if(!signal?.aborted)setBusy(false)}}
+ useEffect(()=>{const c=new AbortController();void refresh(c.signal);return()=>c.abort()},[]);
+ return <details className="dataset-readiness"><summary>Dataset fayllari holati</summary><p>Validation va test yuklamalari tugagach «Qayta tekshirish»ni bosing. Test videolari modelni o‘qitish yoki ibora qidiruviga avtomatik qo‘shilmaydi.</p><button disabled={busy} onClick={()=>void refresh()}>{busy?'Tekshirilmoqda…':'Qayta tekshirish'}</button>{error&&<p role="alert">{error}</p>}<div className="dataset-splits">{data?.splits.map(s=><article key={s.split}><strong>{labels[s.split]}</strong><p>{states[s.state]||s.state}</p><small>CSV: {s.csv_rows?.toLocaleString()??'yo‘q'} · ZIP kliplari: {s.archive_clips?.toLocaleString()??'yo‘q'}</small>{s.missing_clips!==null&&s.missing_clips>0&&<p>{s.missing_clips} ta CSV klipi ZIPda yo‘q.</p>}{s.downloads_in_progress>0&&<p>{s.downloads_in_progress} ta tugallanmagan yuklama bor.</p>}{s.message&&<p>{s.message}</p>}</article>)}</div><p className="muted">Bu fayl nomlari tekshiruvi. Barcha videolarning ochilishi, ASL aniqligi yoki model o‘qitilishi tasdiqlanganini anglatmaydi.</p></details>;
+}

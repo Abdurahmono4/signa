@@ -1,0 +1,11 @@
+from pathlib import Path
+p=Path('frontend/src/main.tsx');s=p.read_text(encoding='utf-8')
+s=s.replace('useCallback} from', 'useCallback,lazy,Suspense} from')
+s=s.replace("import {Avatar} from './Avatar';", "const Avatar=lazy(()=>import('./Avatar').then(m=>({default:m.Avatar})));\nimport {JobHistory} from './JobHistory';")
+s=s.replace("['corpus','▦','ASL video kutubxonasi']", "['history','◷','Mening fayllarim'],['corpus','▦','ASL video kutubxonasi']")
+s=s.replace("page==='corpus'?'ASL video kutubxonasi'", "page==='history'?'Mening fayllarim':page==='corpus'?'ASL video kutubxonasi'")
+s=s.replace("page==='corpus'?'1 739 video.", "page==='history'?'Fayllaringiz va tayyor natijalar.':page==='corpus'?'1 739 video.")
+s=s.replace("{page==='corpus'?<CorpusLibrary", "{page==='history'?<JobHistory onOpen={async j=>{try{setJob(await api<Job>('/jobs/'+j.id));setPage('studio');setMode(j.kind==='video'?'video':'audio');setTime(0);setPlaying(false);setSettings(s=>({...s,engine:'human'}))}catch(e){setError(String(e))}}}/>:page==='corpus'?<CorpusLibrary")
+s=s.replace(':<Avatar time={time} items={items} demo={demo} onReady={onReady} onError={onError}/>', ':<Suspense fallback={<p>3D modul yuklanmoqda…</p>}><Avatar time={time} items={items} demo={demo} onReady={onReady} onError={onError}/></Suspense>')
+s=s.replace("if(job)sessionStorage.setItem('signbridge-last-job',job.id)", "if(job){sessionStorage.setItem('signbridge-last-job',job.id);const url=new URL(location.href);url.searchParams.set('job',job.id);history.replaceState(null,'',url)}")
+p.write_text(s,encoding='utf-8')

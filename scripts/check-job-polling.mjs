@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {pollJob} from '../frontend/src/jobPolling.ts';
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+let calls=0,received=0,finish,signal;
+const stop=pollJob(s=>{calls++;signal=s;return new Promise(resolve=>{finish=resolve})},()=>received++,()=>assert.fail('Unexpected error'),5);
+await pause(25);
+assert.equal(calls,1,'Slow requests must not overlap');
+stop();assert.equal(signal.aborted,true);
+finish({id:'old-job'});await pause(20);
+assert.equal(received,0,'Late responses must not replace the active job');
+assert.equal(calls,1,'Stopped polling must not restart');
+let attempts=0,errors=0,results=0;
+const stopRetry=pollJob(async()=>{if(++attempts===1)throw Error('offline');return 'ready'},()=>results++,()=>errors++,5);
+await pause(40);stopRetry();
+assert.equal(errors,1);assert.ok(results>0,'Polling should recover after a connection failure');
+console.log('PASS: non-overlapping requests, cancellation, stale response protection, recovery.');

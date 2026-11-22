@@ -27,7 +27,7 @@ HF_REVISION = 'ceaed59c964820f2c13401a0870b2988686956ad'
 CHECKPOINT_SHA256 = 'd3953f89a74a2b2a8bbce6a9dd9aba4751c81c03e2d8fe8511f0ae7ce2727302'
 CHECKPOINT_BYTES = 6295891758
 FEATURE_FORMAT = 'signa-madis-133-v1'
-DECODER_GUARD = 'nonempty-motion-token-v2'
+from synchronized_decoder import DECODER_GUARD, PARTS, decode_aligned
 INPUT_NORMALIZATION = 'terminal-punctuation-compact-vocabulary-v1'
 FEATURE_LAYOUT = {
     'representation': 'axis_angle_radians',
@@ -138,23 +138,35 @@ def _load_stats(path, torch):
     return torch.cat((stats[:-20], stats[-10:]))
 
 
-def require_motion_tokens(raw_streams, valid_ids):
-    """Reject an empty model result before upstream substitutes code zero.
+def load_motion_decoders(state):
+    """Use exactly the same frozen decoders for generated and reference tokens."""
+    from mGPT.archs.mgpt_vq import VQVae
+    params = dict(code_dim=512, output_emb_width=512, down_t=2, stride_t=2,
+                  width=512, depth=3, dilation_growth_rate=3, norm=None, activation='relu')
+    body = VQVae(nfeats=43, code_num=96, **params)
+    left = VQVae(nfeats=45, code_num=192, **params)
+    right = VQVae(nfeats=45, code_num=192, **params)
+    for component, prefix in [(body, 'vae.'), (left, 'hand_vae.'), (right, 'rhand_vae.')]:
+        component.load_state_dict(_component_state(state, prefix), strict=True)
+        component.eval().requires_grad_(False)
+    return body, left, right
 
-    This check uses embedding IDs for actual codebook entries, excluding all
-    text, PAD/EOS, mask, and the three non-codebook part tokens. It deliberately
-    makes no claim about the meaning or completeness of a nonempty sequence.
-    Kept independent of torch so the boundary can be tested without weights.
-    """
-    counts = {}
-    for part in ('body', 'left_hand', 'right_hand'):
-        allowed = set(valid_ids.get(part, ()))
-        counts[part] = sum(token in allowed for token in raw_streams.get(part, ()))
-        if not counts[part]:
-            raise ValueError(
-                f'ASL modeli haqiqiy ishora tokenlarini yaratmadi ({part}). '
-                'Qisqaroq, tugallangan inglizcha gap bilan qayta urinib ko‘ring.')
-    return counts
+
+def decode_pose_streams(decoders, streams, mean, std):
+    import torch
+    import torch.nn.functional as F
+    decoded = [component.decode(stream) for component, stream in zip(decoders, streams)]
+    frame_count = decoded[0].shape[1]
+    tail_holds = {part: frame_count - value.shape[1]
+                  for part, value in zip(PARTS, decoded)}
+    if any(n < 0 for n in tail_holds.values()):
+        raise ValueError('Decoded hands extend beyond the body timeline.')
+    body_motion, left_motion, right_motion = [
+        F.pad(value, (0, 0, 0, tail_holds[part]), mode='replicate')
+        if tail_holds[part] else value for part, value in zip(PARTS, decoded)]
+    normalized = torch.cat((body_motion[..., :30], left_motion, right_motion, body_motion[..., 30:]), dim=-1)[0]
+    features = normalized * std + mean
+    return normalized, features, tail_holds
 
 
 def prepare_model_input(text, tokenize, compact_vocabulary):
@@ -218,8 +230,6 @@ def run(request: dict, output: Path, root: Path):
     sys.path.insert(0, str(source))
     import numpy as np
     import torch
-    import torch.nn.functional as F
-    from mGPT.archs.mgpt_vq import VQVae
     from mGPT.archs.madis import MaDiSLanguageModel
 
     torch.set_num_threads(threads)
@@ -229,14 +239,7 @@ def run(request: dict, output: Path, root: Path):
     started = time.perf_counter()
     event('progress', stage='loading_model', message='The neural ASL model is loading on CPU.')
     state = _load_state(checkpoint, torch, np)
-    params = dict(code_dim=512, output_emb_width=512, down_t=2, stride_t=2,
-                  width=512, depth=3, dilation_growth_rate=3, norm=None, activation='relu')
-    body = VQVae(nfeats=43, code_num=96, **params)
-    left = VQVae(nfeats=45, code_num=192, **params)
-    right = VQVae(nfeats=45, code_num=192, **params)
-    for component, prefix in [(body, 'vae.'), (left, 'hand_vae.'), (right, 'rhand_vae.')]:
-        component.load_state_dict(_component_state(state, prefix), strict=True)
-        component.eval().requires_grad_(False)
+    body, left, right = load_motion_decoders(state)
     lm = MaDiSLanguageModel(
         model_path=str(qwen), stage='lm_instruct', motion_codebook_size=96,
         hand_codebook_size=192, rhand_codebook_size=192,
@@ -251,9 +254,9 @@ def run(request: dict, output: Path, root: Path):
         ('left_hand', 'outputs_hand', 'hand', 192),
         ('right_hand', 'outputs_rhand', 'rhand', 192),
     ]
-    valid_ids = {
+    code_maps = {
         part: {lm.tok_id_to_emb_id[lm.tokenizer.convert_tokens_to_ids(
-            f'<{prefix}_id_{code}>')] for code in range(limit)}
+            f'<{prefix}_id_{code}>')]: code for code in range(limit)}
         for part, _, prefix, limit in stream_specs
     }
     del state
@@ -266,6 +269,7 @@ def run(request: dict, output: Path, root: Path):
           model_load_seconds=round(load_seconds, 3))
     output.mkdir(parents=True, exist_ok=True)
     results = []
+    rejected = []
     for index, segment in enumerate(segments):
         event('progress', stage='generating_segment', segment_id=segment['id'], segment_index=index,
               segment_count=len(segments), completed_segments=len(results))
@@ -282,20 +286,21 @@ def run(request: dict, output: Path, root: Path):
                 [model_input_text], labels=False, device=lm.language_model.main_lm.device)
             raw = lm.language_model.generate(
                 input_ids=source_ids, attention_mask=source_mask, max_length=max_tokens)
-            token_counts = require_motion_tokens({
-                part: raw[key][0].detach().cpu().tolist()
-                for part, key, _, _ in stream_specs
-            }, valid_ids)
-            streams = [lm._decode_stream(raw[key], prefix)[0]
-                       for _, key, prefix, _ in stream_specs]
-            limits = [96, 192, 192]
-            streams = [stream.clamp(0, limit - 1) for stream, limit in zip(streams, limits)]
-            decoded = [component.decode(stream) for component, stream in zip((body, left, right), streams)]
-            frame_count = max(motion.shape[1] for motion in decoded)
-            padded = [F.pad(motion, (0, 0, 0, frame_count-motion.shape[1]), mode='replicate') for motion in decoded]
-            body_motion, left_motion, right_motion = padded
-            normalized = torch.cat((body_motion[..., :30], left_motion, right_motion, body_motion[..., 30:]), dim=-1)[0]
-            features = normalized * std + mean
+            raw_streams = {part: raw[key][0].detach().cpu().tolist()
+                           for part, key, _, _ in stream_specs}
+            try:
+                token_values = decode_aligned(raw_streams, code_maps, lm.eos_idx)
+            except ValueError as exc:
+                rejected.append({'id': segment['id'], 'reason': str(exc)})
+                event('progress', stage='generating_motion', segment_id=segment['id'],
+                      segment_count=len(segments), completed_segments=index+1,
+                      rejected_segments=len(rejected))
+                continue
+            token_counts = {part: len(token_values[part]) for part in PARTS}
+            streams = [torch.tensor(token_values[part], dtype=torch.long,
+                                    device=source_ids.device) for part in PARTS]
+            normalized, features, tail_holds = decode_pose_streams((body, left, right), streams, mean, std)
+            frame_count = features.shape[0]
         if features.ndim != 2 or features.shape[1] != 133 or not 1 <= frame_count <= 400:
             raise ValueError(f'Unexpected neural motion shape: {tuple(features.shape)}')
         if not torch.isfinite(features).all():
@@ -317,6 +322,7 @@ def run(request: dict, output: Path, root: Path):
             'generation_seconds': round(generation_seconds, 3), 'seed': seed,
             'max_tokens': max_tokens, 'motion_variation': motion_variation,
             'decoder_guard': DECODER_GUARD, 'valid_motion_tokens': token_counts,
+            'decoding_policy': 'reject-interior-gaps-hold-early-tail', 'tail_hold_frames': tail_holds,
             'input_normalization_version': INPUT_NORMALIZATION,
             'model_input_text': model_input_text, 'input_normalizations': input_normalizations,
             'input_case_normalized': 'lowercase_for_compact_vocabulary' in input_normalizations,
@@ -328,6 +334,9 @@ def run(request: dict, output: Path, root: Path):
         motion_path, json_path = target / 'motion.npz', target / 'motion.json'
         np.savez_compressed(motion_path, features=features.cpu().numpy(),
                             normalized_features=normalized.cpu().numpy(),
+                            raw_body_ids=np.array(raw_streams['body']),
+                            raw_left_ids=np.array(raw_streams['left_hand']),
+                            raw_right_ids=np.array(raw_streams['right_hand']),
                             body_tokens=streams[0].cpu().numpy(),
                             left_hand_tokens=streams[1].cpu().numpy(),
                             right_hand_tokens=streams[2].cpu().numpy(),
@@ -342,7 +351,12 @@ def run(request: dict, output: Path, root: Path):
                     'completed_segments': len(results), 'segment_count': len(segments), 'motions': results},
                     ensure_ascii=False, indent=2), encoding='utf-8')
         event('segment_completed', segment_id=segment['id'], segment_index=index,
-              segment_count=len(segments), completed_segments=len(results), **result)
+              segment_count=len(segments), completed_segments=index+1, **result)
+    (output / 'index.json').write_text(json.dumps({
+        'status': 'ready', 'model': 'MaDiS-How2Sign', 'format': FEATURE_FORMAT,
+        'completed_segments': len(segments), 'segment_count': len(segments),
+        'motions': results, 'rejected': rejected
+    }, ensure_ascii=False, indent=2), encoding='utf-8')
     event('completed', status='ready', index_json=str(output / 'index.json'),
           segment_count=len(results), model_load_seconds=round(load_seconds, 3),
           total_seconds=round(time.perf_counter()-started, 3), motions=results)

@@ -1,0 +1,46 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import ts from '../frontend/node_modules/typescript/lib/typescript.js';
+const text=fs.readFileSync(new URL('../frontend/src/avatarTimeline.ts',import.meta.url),'utf8');
+const code=ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const {motionAt,presentationAt,validateIntervals}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const items=[{start:1,end:3,duration:2},{start:4,end:6,duration:4}];
+validateIntervals(items,7);
+assert.equal(motionAt(items,0),null);
+assert.equal(motionAt(items,3),null);
+assert.equal(motionAt(items,7),null);
+assert.equal(motionAt(items,2).localTime,1);
+assert.equal(motionAt(items,5).localTime,2);
+assert.equal(motionAt(items,4).item,items[1]);
+assert.throws(()=>validateIntervals([{start:1,end:3,duration:2},{start:2,end:4,duration:1}],5));
+assert.throws(()=>validateIntervals([{start:0,end:5,duration:1}],4));
+assert.throws(()=>validateIntervals([{start:0,end:NaN,duration:1}],4));
+const active=presentationAt(items,2);assert.equal(active.from.localTime,1);assert.equal(active.mix,0);
+assert.equal(presentationAt(items,3).mix,0);
+assert.ok(Math.abs(presentationAt(items,3.12).mix-.5)<1e-10);
+assert.equal(presentationAt(items,3.5).from,null);
+assert.ok(Math.abs(presentationAt(items,3.88).mix-.5)<1e-10);
+assert.equal(presentationAt(items,7).from,null);
+const short=[{start:0,end:1,duration:1},{start:1.2,end:2,duration:1}];
+const between=presentationAt(short,1.1);
+assert.equal(between.from.item,short[0]);assert.equal(between.to.item,short[1]);assert.ok(Math.abs(between.mix-.5)<1e-10);
+assert.equal(presentationAt(short,1.2).from.item,short[1]);
+assert.equal(presentationAt([],0).from,null);
+console.log('Timeline: gaps, exact boundaries, native-motion pacing, overlap and malformed timing checks passed.');
+
+const slow=[{start:10,end:16,duration:2}];
+assert.ok(Math.abs(motionAt(slow,11).localTime-.85)<1e-10);
+assert.equal(motionAt(slow,13),null);
+assert.equal(presentationAt(slow,13).from,null);
+let last=-1;
+for(let t=10;t<10+2/.85;t+=.01){const p=motionAt(slow,t);assert.ok(p.localTime>last);last=p.localTime}
+assert.ok(last>1.99,'Final source frames retained without looping');
+assert.ok(presentationAt(slow,10+2/.85+.12).from,'Fade after active window');
+console.log('Bounded cadence, final frames, no loop, neutral gap: PASS');
+
+const medium=[{start:0,end:1,duration:1},{start:1.8,end:3,duration:1}];
+const bridge=presentationAt(medium,1.4);
+assert.equal(bridge.from.item,medium[0]);
+assert.equal(bridge.to.item,medium[1]);
+assert.ok(Math.abs(bridge.mix-.5)<1e-9);
+assert.equal(presentationAt([medium[0],{...medium[1],blockedBefore:true}],1.4).from,null);

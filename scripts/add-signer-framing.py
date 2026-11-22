@@ -1,0 +1,10 @@
+from pathlib import Path
+p=Path('frontend/src/main.tsx');s=p.read_text(encoding='utf-8').replace("engine:'human'", "engine:'human',cropMode:'center' as 'center'|'full',removeGreen:true",1)
+s=s.replace('<HumanSigner time={time}', '<HumanSigner cropMode={settings.cropMode} removeGreen={settings.removeGreen} time={time}')
+s=s.replace('<label>Avatar kengligi:', '<label>Tarjimon kadri<select value={settings.cropMode} onChange={e=>setSettings({...settings,cropMode:e.target.value as \'center\'|\'full\'})}><option value="center">Markazdan yaqin ko‘rinish</option><option value="full">Original kadr to‘liq — qo‘llar kesilmasin</option></select></label><label className="check"><input type="checkbox" checked={settings.removeGreen} onChange={e=>setSettings({...settings,removeGreen:e.target.checked})}/>Yashil fonni olib tashlash</label><label>Avatar kengligi:')
+p.write_text(s,encoding='utf-8')
+p=Path('frontend/src/CorpusLibrary.tsx');s=p.read_text(encoding='utf-8')
+s=s.replace(" const [query,setQuery]", " const [cropMode,setCropMode]=useState<'center'|'full'>('center'),[removeGreen,setRemoveGreen]=useState(true);\n const [query,setQuery]")
+s=s.replace('<HumanSigner time={time}', '<HumanSigner cropMode={cropMode} removeGreen={removeGreen} time={time}')
+s=s.replace('<h3>{chosen.text}</h3>', '<h3>{chosen.text}</h3><label>Kadr<select value={cropMode} onChange={e=>setCropMode(e.target.value as \'center\'|\'full\')}><option value="center">Yaqin ko‘rinish</option><option value="full">Original kadr to‘liq</option></select></label><label className="check"><input type="checkbox" checked={removeGreen} onChange={e=>setRemoveGreen(e.target.checked)}/>Yashil fonni olib tashlash</label>')
+p.write_text(s,encoding='utf-8')

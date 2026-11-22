@@ -1,94 +1,48 @@
-# Signa — ovozni ko‘ring
+# SignBridge UZ
 
-Inglizcha video yoki audio yuklang va **Imo-ishorada ijro etish** tugmasini bosing. Whisper nutqni matnga aylantiradi, **MaDiS-How2Sign** neyron modeli gaplardan uzluksiz tana va qo‘l harakatini yaratadi. Avatar media oynasining burchagida ko‘rinadi. Hisoblash ushbu kompyuterda bajariladi.
+Inglizcha audio/video → vaqtli matn → tajribaviy ASL avatar ijrosi → H.264/AAC MP4. Mahalliy CPU prototipi; React/TypeScript/Vite/R3F, FastAPI, Faster-Whisper small INT8, MaDiS, SQLite va FFmpeg ishlatiladi.
 
-Bu tadqiqot prototipi: modelning ASL ma’nosi va tushunarliligi mutaxassislar bilan hali baholanmagan. SMPL-X harakatini mavjud CC0 avatarga ko‘chirish taxminiy; asl modelning qo‘l bazaviy shakli va yuz ifodalarining to‘liq mosligi tasdiqlanmagan. Eski 24 so‘zli lug‘at va 26 harf API darajasida saqlangan, asosiy sahifa esa neyron modeldan foydalanadi. Tafsilotlar: [NEURAL-MODEL.md](docs/NEURAL-MODEL.md).
+Oddiy interfeys: **Video yoki audio yuklash → avatar ijrosini ko‘rish → MP4 tayyorlash → yuklab olish**. Asosiy video chapda, hozirgi Rocketbox ayol avatari o‘ngda; audio natijasida avatar markazda. Ichki dataset sonlari va tadqiqot boshqaruvlari oddiy sahifada yo‘q.
 
-## Ishga tushirish — Windows / VS Code
+Model bir iborani qabul qilmasa, o‘sha iboraning matni/subtitri saqlanadi va qisman natija deb ko‘rsatiladi. Bu tasdiqlangan yoki xatosiz ASL tarjimasi emas. Model qo‘l/yuz mosligi va tushunarlilik uchun kar foydalanuvchilar hamda ASL mutaxassisi bahosini talab qiladi. O‘zbekiston imo-ishora tili ushbu rejim emas.
 
-`Signa.code-workspace` faylini VS Code bilan oching. Loyiha papkasidagi terminalda:
+## Ishga tushirish
 
 ```powershell
-npm.cmd start
+Set-Location D:\SignBridge-UZ
+.\start.bat
 ```
 
-[Interfeys](http://127.0.0.1:5173) · [API hujjatlari](http://127.0.0.1:8000/docs). To‘xtatish: Ctrl+C.
+Frontend: http://127.0.0.1:5174/ · API: http://127.0.0.1:8001/docs . Brauzerda 3D MP4 kadrlari olinayotganda oynani ochiq saqlang. Model CPUda vaqt oladi; nusxa yuklamang, jarayon holatini kuting. Original audio AACga qayta kodlanadi; harakatga vaqt yetmasa audio/video birga sekinlashtirilishi mumkin. Ishlar va tayyor eksportlar lokal storage ichida saqlanadi.
 
-Yangi kompyuterda Node.js 22+ va Python 3.12 bilan:
-
-```powershell
-npm.cmd run setup
-npm.cmd run model
-powershell -ExecutionPolicy Bypass -File scripts/setup-neural-model.ps1
-npm.cmd start
-```
-
-Python topilmasa: `scripts/setup.ps1 -Python C:\Python312\python.exe`. Bevosita TypeScript manbasini o‘qiydigan Node sinovlari uchun Node.js 24 ishlatilgan.
-
-Model skripti `small.en` va `medium.en` modellarini bir marta yuklaydi. Sahifa `balanced` / `small.en` rejimini avtomatik tanlaydi. Nutq CPU INT8 orqali mahalliy qayta ishlanadi; media tashqi AI xizmatiga yuborilmaydi.
-
-Neyron ASL modeli alohida Python 3.11 muhitida ishlaydi. Asosiy checkpoint va Qwen fayllari taxminan 7.2 GB; CPU Torch va kutubxonalar uchun qo‘shimcha joy kerak. MaDiS kodi va vaznlari CC-BY-NC-ND-4.0 shartlarida, tadqiqot uchun olingan. Ular manba ZIP paketiga kiritilmaydi. NVIDIA GPU shart emas, ammo CPU’da tayyorlash video davomiyligidan uzoqroq bo‘lishi mumkin.
-
-## Foydalanish
-
-1. **Fayl tanlash** orqali video/audio yuklang yoki faylni studiya ustiga tashlang. MP4, MOV, WEBM, MP3, WAV, M4A, OGG va FLAC; 100 MB va 20 daqiqagacha.
-2. **Imo-ishorada ijro etish**ni bosing. Nutq aniqlanadi, harakatlar tayyorlanadi va ijro avtomatik boshlanadi. Tayyorlashni **Bekor qilish** bilan to‘xtatish mumkin.
-3. Media, gap subtitri va burchakdagi avatarni kuzating. Gap harakati ko‘pi bilan 1.25× tezlikda ijro etiladi. Harakat nutq vaqtidan uzun bo‘lsa, media ishora tugashini kutadi. So‘z va ishora vaqti taxminiy moslanadi.
-4. Shu tugma bilan **Pauza** yoki **Qayta ijro etish**ni tanlang. Vaqt slayderi ikkala panelni birga boshqaradi. Boshidan boshlash, subtitr, ovoz va to‘liq ekran boshqaruvlari shu yerda.
-5. **Boshqa fayl** bilan yangi media tanlang. Yangi fayl oldingi ijroni to‘xtatadi.
-
-Asosiy sahifa noma’lum so‘zlarni harflab ijro etmaydi. Harakat yaratish muvaffaqiyatsiz bo‘lsa, xato ko‘rsatiladi va harakatsiz avatarli tarjima tayyor deb belgilanmaydi. Nutq matni noto‘g‘ri aniqlansa, ishora mazmuni ham noto‘g‘ri bo‘lishi mumkin; mavjud transkriptni API orqali tahrirlash mumkin.
-
-## Avatarli video olish
-
-Ijro tayyor bo‘lgach **Avatarli video tayyorlash**ni bosing. Dastur boshidan ijro qilib, original video ustiga burchakdagi avatar va joriy subtitrni birlashtiradi. Audio fayl uchun fonli avatar videosi yaratiladi. Yozuv tugagach **Videoni yuklab olish** bilan `.webm` faylni saqlang. Bu MP4 eksporti emas.
-
-Yozish brauzerda, haqiqiy ijro tezligida bajariladi: tugaguncha sahifani ochiq qoldiring. **Bekor qilish** yozuvni to‘xtatadi. Chiqishning uzun tomoni ko‘pi bilan 1280 piksel, yozuvning hajm chegarasi 256 MB. Brauzer WebM yozishni qo‘llashi kerak. Media tashqi serverga yuborilmaydi.
-
-Faqat muvaffaqiyatli yaratilgan avatar harakati eksport qilinadi. Modelning texnik ishlashi ASL mazmuni mutaxassis tasdig‘idan o‘tganini anglatmaydi.
-
-Haqiqiy brauzerda avatarli VP9/Opus WebM yozildi, yuklab olindi va video/ovoz yo‘laklari PyAV bilan tekshirildi. Shu sinovdan keyingi audio vaqt tuzatishi va yangi yaqin kameraning qayta brauzer yozuvi hali tekshirilmagan; aniq natijalar va cheklovlar [VALIDATION.md](docs/VALIDATION.md) da qayd etilgan.
-
-Shu brauzer tabida sahifa yangilansa, oxirgi ish/fayl sessiyadan tiklanadi; ijro o‘z-o‘zidan boshlanmaydi. **Imo-ishorada ijro etish** bilan davom eting. Bu ko‘p foydalanuvchilik hisob yoki doimiy foydalanuvchi kutubxonasi emas.
-
-Yuklashdan oldingi **Namunani sinash** ham haqiqiy yuklash → ASR → avatar zanjiridan o‘tadi; tayyor matn bilan ASRni chetlab o‘tmaydi. `examples/education-demo.mp4` — qisqa sintetik inglizcha nazorat videosi; `examples/long-speech-demo.*` — uzunroq sintetik audio va tayanch matn.
-
-Sahifa bitta studiyadan iborat. Eski laboratoriya, qamrov ro‘yxati, kutubxona va tahrir panellari asosiy interfeysda ko‘rsatilmaydi. Tarix, tahrir, eksport va korpus tekshiruvi API qatlamida saqlangan.
-
-## Avatar va ijro
-
-Avatar yangi soch, ko‘zoynak, yuz shakli va keng indigo kiyim bilan qayta bezatilgan. Manba modelning qo‘l/barmoq skeleti va yuz animatsiya kanallari saqlangan. Harakatlar [Studio Galt manba arxivi](https://github.com/StudioGalt/Sign-Language-Mocap-Archive) dan olingan; manifestda manba URL, Git blob SHA va CC0-1.0 litsenziyasi qayd etilgan.
-
-Neyron ijro 133 o‘lchamli, 24 fps tana/qo‘l aylanishlaridan yaratiladi. Harakatlar tekshiriladi va barcha kadrlar saqlanadi; noma’lum so‘z o‘rniga tasodifiy lug‘at ishorasi qo‘yilmaydi. Model yaratgan harakatning lingvistik sifati alohida baholanishi kerak. Eski korpus kliplari tajriba va regressiya tekshiruvlari uchun saqlangan.
-
-## Tekshirish
+Python 3.11 `.venv`, Node va frontend dependencies kerak. FFmpeg/FFprobe `tools` yoki PATH ichida. MaDiS alohida CPU runtime hamda model assetlariga tayangan; `GET /api/neural/health` tayyorlikni ko‘rsatadi. Hozirgi lokal MaDiS manzili `.env.example`/`backend/app/neural_api.py` dagi SIGNBRIDGE_MADIS_BACKEND orqali sozlanadi. Loyiha boshqa kompyuterga ko‘chirilganda model fayllari alohida kerak.
 
 ```powershell
-npm.cmd test
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+Set-Location frontend
+npm.cmd ci
 npm.cmd run build
-node scripts/test-avatar.mjs
-node scripts/test-interpreter.mjs
-node scripts/test-playback.mjs
-node scripts/test-playback-media.mjs
-node scripts/test-framing.mjs
-node scripts/test-composite-export.mjs
-node scripts/test-neural-motion.mjs
+Set-Location ..
+.\.venv\Scripts\python.exe scripts\check-local-readiness.py
 ```
 
-Sinovlar va brauzer kuzatuvlari: [VALIDATION.md](docs/VALIDATION.md). Interfeysni qabul qilish qadamlari: [UI_REDESIGN.md](docs/UI_REDESIGN.md). Arxitektura: [ARCHITECTURE.md](docs/ARCHITECTURE.md). Avatar/korpus: [AVATAR.md](docs/AVATAR.md). Hali zarur ilmiy bosqichlar: [RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md).
+## Holat va sinovlar
 
-## Fayllar va chegaralar
+2026-11-02: 117 backend testi, frontend build va frontend flow guard tekshiruvlari o‘tgan. Haqiqiy qisqa audio/video ASR va 3D MP4 eksportlari oldingi bosqichlarda tekshirilgan. Dastlab qisman rejada 6/7 ibora yaratildi; keyingi terminal tinish belgisi tuzatishidan so‘ng ayni haqiqiy videoda 7/7 ibora generatsiyasi o‘tdi. Asl transkript o‘zgarmadi; yangi uzun 3D browser MP4 eksporti hali sinovdan o‘tmagan. Sabab: docs/MODEL_TEXT_INPUT.md.
 
-- `frontend/src/main.tsx`, `style.css`: yagona media/avatar sahifasi.
-- `frontend/src/playback.ts`, `useInterpreterPlayback.ts`: umumiy ijro vaqti, media pauzalari va seek.
-- `frontend/src/Avatar3D.tsx`, `interpreter.ts`: 3D ijro va avatar bezagi.
-- `frontend/src/neuralMotion.ts`: MaDiS aylanishlarini avatar skeletiga ko‘chirish.
-- `frontend/src/compositeExport.ts`: burchakdagi avatarli canvas, audio va WebM yozuvi.
-- `backend/app/asr.py`: dekodlash, nutq bo‘laklari, so‘zlar va audit.
-- `backend/app/main.py`, `signs.py`: API, SQLite, korpus va ijro rejasi.
-- `backend/app/neural.py`, `inference/madis_runner.py`: alohida CPU model jarayoni, navbat, bekor qilish va natija keshi.
-- `backend/data/`: mahalliy media/baza; `backend/models/`: modellar.
+```powershell
+.\.venv\Scripts\python.exe -m pytest backend\tests -q
+node --experimental-strip-types scripts\check-flow-guards.mjs
+```
 
-Bir foydalanuvchilik mahalliy dastur; hisoblash ishlari umumiy navbat bilan bajariladi. Serverlar `127.0.0.1` bilan cheklangan. Server to‘xtasa, tugallanmagan ish qayta boshlanadi. Hisoblar, ijtimoiy tarmoq havolasidan import va ovozsiz video sahnalarini tushunish yo‘q. Ayrim MOV kodeklari brauzerda ochilmasligi mumkin. Haqiqiy ASL foydalanuvchilari bilan baholash hali bajarilmagan.
+[Avatar va eksport sifati](docs/OUTPUT_QUALITY.md) · [Amaldagi holat](docs/CURRENT_STATUS.md) · [Qisman natija](docs/PARTIAL_MOTION.md) · [Train yaxlitligi](docs/TRAIN_INTEGRITY.md) · [Validation/test](docs/EVALUATION_DATA.md) · [Sinovlar](docs/TEST_RESULTS.md).
 
-Model manbalari: [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [medium.en](https://huggingface.co/Systran/faster-whisper-medium.en), [small.en](https://huggingface.co/Systran/faster-whisper-small.en).
+## Datasetlar va cheklovlar
+
+How2Sign — ASL ma’lumotlari. Qidiruvda manba iborasiga aynan mos yozuvlar olinadi; test split model fit yoki qidiruvga qo‘shilmagan. Train RGB ZIPlarda CRC xatolari topilib, kuzatilgan 6 frontal klip qidiruvdan chiqarilgan. Train 2D gzipda dekompressiya xatosi bor va to‘liq o‘qitishga tayyor emas. Original arxivlar saqlangan. Model shu lokal datasetlarda qayta o‘qitilmadi.
+
+Kod/GitHubga katta dataset, model vaznlari, `.venv`, user media yoki storage qo‘shilmasin; `.gitignore` mavjud. Bu bir foydalanuvchili lokal dastur, ommaviy server uchun autentifikatsiya va ko‘p foydalanuvchili navbat alohida ishdir.
+
+How2Sign metadata CC BY-NC 4.0, MaDiS model CC BY-NC-ND 4.0, Rocketbox avatar MIT litsenziyalari qayd etilgan. Tijorat foydalanish huquqlari alohida hal qilinishi kerak. Manba/asset tafsilotlari [avatar pipeline](docs/AVATAR_PIPELINE.md) va [datasets](docs/DATASETS.md) hujjatlarida.
+
+Har bir avatar ishida hozir 75 tagacha mos motion bo‘lagi / 30000 harakat kadri chegarasi bor. Bundan katta ish hisoblash oldidan aniq xabar bilan rad etiladi. Eksportdan oldin disk joyi ham tekshiriladi; bu boshqa dasturlar uchun disk rezervatsiyasi emas.

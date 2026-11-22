@@ -22,11 +22,11 @@ export function neuralMotionAssetUrl(asset:string){
 export const NEURAL_RETARGET_LIMITATIONS=Object.freeze([
  'SMPL-X rotation deltas are retargeted onto the CC0 Galtis bind skeleton; this is an approximation requiring visual validation.',
  'SMPL-X learned hand-mean offsets are not bundled because the licensed model assets are not present.',
- 'Jaw and ten SMPL-X expression coefficients have no verified mapping to this avatar and are not synthesized.',
+ 'Jaw rotation is transferred only when the destination explicitly maps a jaw bone; ten SMPL-X expression coefficients still have no verified facial mapping.',
  'Root and lower-body motion are absent from the 133-feature output and remain at the destination bind pose.',
 ]);
 
-type Joint={key:string;parent:string|null;offset:number;target:string};
+type Joint={key:string;parent:string|null;offset:number;target:string;optional?:boolean};
 const JOINTS:Joint[]=[
  {key:'neck',parent:null,offset:0,target:'neck_01'},
  {key:'left_collar',parent:null,offset:3,target:'clavicle_l'},
@@ -38,6 +38,9 @@ const JOINTS:Joint[]=[
  {key:'right_elbow',parent:'right_shoulder',offset:21,target:'lowerarm_r'},
  {key:'left_wrist',parent:'left_elbow',offset:24,target:'hand_l'},
  {key:'right_wrist',parent:'right_elbow',offset:27,target:'hand_r'},
+ // A rotation, not an expression coefficient: apply in the head coordinate chain.
+ // Legacy rigs without an explicit jaw mapping retain their existing behavior.
+ {key:'jaw',parent:'head',offset:120,target:'jaw',optional:true},
 ];
 for(const [side,offset] of [['left',30],['right',75]] as const){
  for(const [fingerIndex,finger] of ['index','middle','pinky','ring','thumb'].entries()){
@@ -98,16 +101,22 @@ function targetBind(model:THREE.Object3D){
  return {working,bones:new Set(bindMatrices.keys())};
 }
 
-export function createNeuralClip(model:THREE.Object3D,motion:NeuralMotion):THREE.AnimationClip{
+export function createNeuralClip(model:THREE.Object3D,motion:NeuralMotion,targetNames:Readonly<Record<string,string>>={},useNativeBind=false,referenceWorld:ReadonlyMap<string,THREE.Quaternion>=new Map()):THREE.AnimationClip{
  const frames=validateNeuralMotion(motion);
- const {working,bones}=targetBind(model),nodes:THREE.Object3D[]=[];
+ // Rocketbox already ships in its bind pose, including a non-bone Bip01
+ // parent and centimeter-to-meter ancestor. Reconstructing its root bone
+ // from inverse binds would apply the pelvis translation twice.
+ const native=()=>{const working=clone(model),bones=new Set<THREE.Bone>();working.traverse(n=>{if(n instanceof THREE.SkinnedMesh)n.skeleton.bones.forEach(b=>bones.add(b))});working.updateMatrixWorld(true);return {working,bones}};
+ const {working,bones}=useNativeBind?native():targetBind(model),nodes:THREE.Object3D[]=[];
  working.traverse(node=>nodes.push(node));
  const restGlobal=new Map<THREE.Object3D,THREE.Quaternion>(),restLocal=new Map<THREE.Object3D,THREE.Quaternion>();
  for(const node of nodes){restGlobal.set(node,node.getWorldQuaternion(new THREE.Quaternion()));restLocal.set(node,node.quaternion.clone())}
  const targets=new Map<THREE.Object3D,Joint>(),names=new Set<string>();
  for(const joint of JOINTS){
-  const target=working.getObjectByName(joint.target);
-  if(!(target instanceof THREE.Bone)||!bones.has(target))throw new Error(`Missing Galtis neural target ${joint.target}.`);
+  if(joint.optional&&!targetNames[joint.target])continue;
+  const name=targetNames[joint.target]||joint.target;
+  const target=working.getObjectByName(name);
+  if(!(target instanceof THREE.Bone)||!bones.has(target))throw new Error(`Missing neural target ${name}.`);
   targets.set(target,joint);
  }
  for(const bone of bones){if(!bone.name||names.has(bone.name))throw new Error(`Ambiguous neural target name ${bone.name}.`);names.add(bone.name)}
@@ -121,7 +130,8 @@ export function createNeuralClip(model:THREE.Object3D,motion:NeuralMotion):THREE
    if(joint){
     // Both rigs use Y-up world axes. Source rest joint orientations are the
     // identity convention; the destination's real bind orientation is kept.
-    const global=source.get(joint.key)!.clone().multiply(restGlobal.get(node)!).normalize();
+    const reference=referenceWorld.get(node.name)||restGlobal.get(node)!;
+    const global=source.get(joint.key)!.clone().multiply(reference).normalize();
     const local=parent?parent.clone().invert().multiply(global).normalize():global.clone();
     const values=lanes.get(node)!;
     if(values.length){const last=new THREE.Quaternion().fromArray(values,values.length-4);if(last.dot(local)<0)local.set(-local.x,-local.y,-local.z,-local.w)}
@@ -133,7 +143,10 @@ export function createNeuralClip(model:THREE.Object3D,motion:NeuralMotion):THREE
  for(const bone of bones){
   const values=lanes.get(bone);
   if(values){values.push(...values.slice(-4));tracks.push(new THREE.QuaternionKeyframeTrack(`${bone.name}.quaternion`,times,values))}
-  else tracks.push(new THREE.QuaternionKeyframeTrack(`${bone.name}.quaternion`,[0,duration],[...bone.quaternion.toArray(),...bone.quaternion.toArray()]));
+  // A native-bind avatar starts at these transforms; only the mapped rotations
+  // move. Other rigs still need the reconstructed bind transforms below.
+  if(useNativeBind)continue;
+  if(!values)tracks.push(new THREE.QuaternionKeyframeTrack(`${bone.name}.quaternion`,[0,duration],[...bone.quaternion.toArray(),...bone.quaternion.toArray()]));
   tracks.push(new THREE.VectorKeyframeTrack(`${bone.name}.position`,[0,duration],[...bone.position.toArray(),...bone.position.toArray()]));
   tracks.push(new THREE.VectorKeyframeTrack(`${bone.name}.scale`,[0,duration],[...bone.scale.toArray(),...bone.scale.toArray()]));
  }
@@ -141,8 +154,10 @@ export function createNeuralClip(model:THREE.Object3D,motion:NeuralMotion):THREE
  // SMPL-X's learned expression basis to this avatar's action-unit morphs.
  working.traverse(node=>{
   if(!(node instanceof THREE.Mesh)||!node.morphTargetInfluences)return;
-  node.morphTargetInfluences.forEach((_,index)=>tracks.push(new THREE.NumberKeyframeTrack(`${node.name}.morphTargetInfluences[${index}]`,[0,duration],[0,0])));
+  node.morphTargetInfluences.forEach((weight,index)=>{
+   if(!useNativeBind||weight!==0)tracks.push(new THREE.NumberKeyframeTrack(`${node.name}.morphTargetInfluences[${index}]`,[0,duration],[0,0]));
+  });
  });
  const clip=new THREE.AnimationClip(motion.name||'MaDiS ASL generated motion',duration,tracks).optimize();
- return Object.assign(clip,{retargeting:{method:'smplx-axis-angle-delta-to-galtis-bind',fps:motion.fps,frames:frames.length,trackedJoints:JOINTS.length,limitations:[...NEURAL_RETARGET_LIMITATIONS]}});
+ return Object.assign(clip,{retargeting:{method:'smplx-axis-angle-delta-to-target-bind',fps:motion.fps,frames:frames.length,trackedJoints:targets.size,limitations:[...NEURAL_RETARGET_LIMITATIONS]}});
 }
