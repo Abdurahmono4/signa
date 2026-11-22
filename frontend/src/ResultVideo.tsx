@@ -71,17 +71,23 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
   resume.current=Number.isFinite(video.current.currentTime)?video.current.currentTime:0;
   setError('');setRetrying(true);setDuration(0);video.current.load();
  }
+ function setReviewRate(next:number){
+  setRate(next);
+  for(const media of [video.current,referenceVideo.current]){
+   if(media&&media.playbackRate!==next)media.playbackRate=next;
+  }
+ }
  return <><video ref={video} className={className} controls playsInline preload="metadata" aria-label="Tarjimonli natija" src={src}
   onPlay={()=>referenceVideo.current?.pause()}
   onLoadedMetadata={e=>{const media=e.currentTarget;setRetrying(false);setError('');media.playbackRate=rate;
    if(Number.isFinite(media.duration)){setDuration(media.duration);if(resume.current>0)media.currentTime=Math.min(resume.current,media.duration)}
    resume.current=0;
   }}
-  onRateChange={e=>setRate(e.currentTarget.playbackRate)}
+  onRateChange={e=>setReviewRate(e.currentTarget.playbackRate)}
   onTimeUpdate={e=>{if(expanded)setCurrentTime(e.currentTarget.currentTime)}}
   onError={()=>{setDuration(0);setRetrying(false);setError(video.current?.error?.code===3||video.current?.error?.code===4?'Brauzer videoni ijro eta olmadi. MP4 faylini yuklab olib oching yoki qayta urinib ko‘ring.':'Video yuklanayotganda aloqa uzildi. Tayyor natijani qayta oching.')}}/>
   <div className="actions" role="group" aria-label="Harakatni batafsil ko‘rish">
-   <label>Ko‘rish tezligi <select aria-label="Ko‘rish tezligi" value={rate} onChange={e=>{const next=Number(e.target.value);setRate(next);if(video.current)video.current.playbackRate=next}}>
+   <label>Ko‘rish tezligi <select aria-label="Ko‘rish tezligi" value={rate} onChange={e=>setReviewRate(Number(e.target.value))}>
     {![.5,.75,1].includes(rate)&&<option value={rate}>{rate}×</option>}<option value={.5}>0,5× — juda sekin</option><option value={.75}>0,75× — sekin</option><option value={1}>1× — asl tezlik</option>
    </select></label>
    <button type="button" onClick={()=>{const v=video.current;if(v&&Number.isFinite(v.duration)){v.currentTime=Math.max(0,v.currentTime-3)}}}>3 soniya orqaga</button>
@@ -96,6 +102,12 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
    </div>
   </div>}
   {reference&&<details className="result-source-recording" onToggle={e=>{
+    if(e.currentTarget.open&&video.current){
+     video.current.pause();
+     const sourceTime=video.current.currentTime/scale;
+     const index=recordings.findIndex(r=>r.start<=sourceTime&&sourceTime<r.end);
+     if(index>=0)setSelectedReference(index);
+    }
     setShowReference(e.currentTarget.open);setReferenceError(false);
   }}>
    <summary>Haqiqiy tarjimon ijrosini solishtirish</summary>
@@ -104,14 +116,16 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
      <select value={selectedReference} onChange={e=>{setSelectedReference(Number(e.target.value));setReferenceError(false)}}>
       {recordings.map((r,index)=><option key={index} value={index}>{formatTime(r.start*scale)} · {r.text}</option>)}
      </select></label>:<p lang="en">{reference.text}</p>}
-    <video key={reference.video_url} ref={referenceVideo} aria-label="How2Sign tarjimon yozuvi" controls playsInline
-     preload="metadata" src={reference.video_url!} onPlay={()=>video.current?.pause()} onError={()=>setReferenceError(true)}/>
+    <video key={reference.start+'-'+reference.video_url} ref={referenceVideo} aria-label="How2Sign tarjimon yozuvi" controls playsInline
+     preload="metadata" src={reference.video_url!} onLoadedMetadata={e=>{e.currentTarget.playbackRate=rate}}
+     onRateChange={e=>{if(e.currentTarget.readyState>=1)setReviewRate(e.currentTarget.playbackRate)}}
+     onPlay={()=>video.current?.pause()} onError={()=>setReferenceError(true)}/>
     {referenceError&&<p role="alert">Tarjimon yozuvi ochilmadi.</p>}
     <div className="actions"><button type="button" disabled={duration<=reference.start*scale} onClick={()=>{
      referenceVideo.current?.pause();
      if(video.current){video.current.pause();video.current.currentTime=reference.start*scale}
     }}>Avatardagi shu jumlaga qaytish</button></div>
-    <small>Tabiiy tezlikdagi ASL yozuvi · <a href="https://how2sign.github.io/" target="_blank" rel="noreferrer">How2Sign</a></small>
+    <small>ASL tarjimonining manba yozuvi · <a href="https://how2sign.github.io/" target="_blank" rel="noreferrer">How2Sign</a></small>
    </>}
   </details>}
   {intervals.length>0&&<details className="result-subtitle-intervals" onToggle={e=>{
