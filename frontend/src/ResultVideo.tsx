@@ -5,7 +5,7 @@ export type TimedCaption=SubtitleInterval&{text:string};
 type Recording=TimedCaption&{supported:boolean;video_url?:string|null;timing_source?:string|null};
 type PlayerProps={src:string;className?:string;subtitleIntervals?:readonly SubtitleInterval[];
  sourceCaptions?:readonly TimedCaption[];sourceRecordings?:readonly Recording[];timingScale?:number;
- avatarReview?:{panelWidth:number;centered:boolean;close:boolean;fps?:number}};
+ avatarReview?:{panelWidth:number;centered:boolean;close:boolean;fps?:number;frames?:number}};
 
 function formatTime(time:number){
  const seconds=Math.floor(time);
@@ -21,6 +21,11 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
  const [duration,setDuration]=useState(0);
  const [expanded,setExpanded]=useState(false);
  const [currentTime,setCurrentTime]=useState(0);
+ const fps=avatarReview?.fps;
+ const measuredFrames=avatarReview?.frames;
+ const frameCount=fps&&duration?(measuredFrames&&Number.isSafeInteger(measuredFrames)&&measuredFrames>0
+  ?measuredFrames:Math.max(1,Math.round(duration*fps))):0;
+ const frameAt=(time:number)=>Math.max(0,Math.min(frameCount-1,Math.floor(time*(fps||0)+1e-6)));
  const referenceVideo=useRef<HTMLVideoElement>(null);
  const [showReference,setShowReference]=useState(false);
  const [selectedReference,setSelectedReference]=useState(0);
@@ -62,11 +67,11 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
 
  function stepFrame(direction:number){
   const media=video.current;
-  if(!media||!avatarReview?.fps||!duration)return;
+  if(!media||!fps||!frameCount)return;
   media.pause();
-  const {fps}=avatarReview;
-  const frame=Math.floor(media.currentTime*fps+1e-4)+direction;
-  media.currentTime=Math.max(0,Math.min(duration-.5/fps,(frame+.5)/fps));
+  const frame=Math.max(0,Math.min(frameCount-1,frameAt(media.currentTime)+direction));
+  media.currentTime=Math.min(duration,(frame+.5)/fps);
+  setCurrentTime(media.currentTime);
  }
  function retry(){
   if(!video.current)return;
@@ -86,7 +91,8 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
    resume.current=0;
   }}
   onRateChange={e=>setReviewRate(e.currentTarget.playbackRate)}
-  onTimeUpdate={e=>{if(expanded)setCurrentTime(e.currentTarget.currentTime)}}
+  onTimeUpdate={e=>{if(expanded||zoom)setCurrentTime(e.currentTarget.currentTime)}}
+  onSeeked={e=>{if(expanded||zoom)setCurrentTime(e.currentTarget.currentTime)}}
   onError={()=>{setDuration(0);setRetrying(false);setError(video.current?.error?.code===3||video.current?.error?.code===4?'Brauzer videoni ijro eta olmadi. MP4 faylini yuklab olib oching yoki qayta urinib ko‘ring.':'Video yuklanayotganda aloqa uzildi. Tayyor natijani qayta oching.')}}/>
   <div className="actions" role="group" aria-label="Harakatni batafsil ko‘rish">
    <label>Ko‘rish tezligi <select aria-label="Ko‘rish tezligi" value={rate} onChange={e=>setReviewRate(Number(e.target.value))}>
@@ -94,13 +100,14 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
    </select></label>
    <button type="button" onClick={()=>{const v=video.current;if(v&&Number.isFinite(v.duration)){v.currentTime=Math.max(0,v.currentTime-3)}}}>3 soniya orqaga</button>
    {avatarReview&&<button type="button" aria-expanded={zoom} disabled={!duration}
-    onClick={()=>{if(!zoom)video.current?.pause();setZoom(!zoom)}}>Qo‘llarni yaqindan ko‘rish</button>}
+    onClick={()=>{if(!zoom&&video.current){video.current.pause();setCurrentTime(video.current.currentTime)}setZoom(!zoom)}}>Qo‘llarni yaqindan ko‘rish</button>}
   </div>
   {zoom&&avatarReview&&<div className="avatar-frame-review">
    <canvas ref={zoomCanvas} role="img" aria-label="Avatar qo‘llari va yuzi yaqin ko‘rinishda"/>
    {avatarReview.fps&&<div className="actions" role="group" aria-label="Kadrma-kadr ko‘rish">
-    <button type="button" disabled={!duration} onClick={()=>stepFrame(-1)}>← Oldingi kadr</button>
-    <button type="button" disabled={!duration} onClick={()=>stepFrame(1)}>Keyingi kadr →</button>
+    <button type="button" disabled={!frameCount||frameAt(currentTime)===0} onClick={()=>stepFrame(-1)}>← Oldingi kadr</button>
+    {frameCount>0&&<span>Kadr {frameAt(currentTime)+1} / {frameCount}</span>}
+    <button type="button" disabled={!frameCount||frameAt(currentTime)>=frameCount-1} onClick={()=>stepFrame(1)}>Keyingi kadr →</button>
    </div>}
   </div>}
   {reference&&<details className="result-source-recording" onToggle={e=>{
