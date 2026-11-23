@@ -84,11 +84,12 @@ export default function App(){
  const exportedSettings=job?.settings;
  const avatarPanelWidth=exportedSettings?.size;
  const exportFps=job?.probe?.fps;
- const avatarReview=job?.kind==='video'&&exportedSettings?.engine==='neural'&&
-  exportedSettings.avatar_model==='rocketbox'&&exportedSettings.layout==='side_by_side'&&
-  typeof avatarPanelWidth==='number'&&avatarPanelWidth>=.2&&avatarPanelWidth<=.45&&
-  typeof exportFps==='number'&&exportFps>=12&&exportFps<=120
-  ? {panelWidth:avatarPanelWidth,figureHeight:Math.max(avatarPanelWidth,exportedSettings.close_panel?.4:0)*4/3,fps:exportFps}
+ const centeredAvatar=job?.kind==='audio';
+ const avatarReview=exportedSettings?.engine==='neural'&&exportedSettings.avatar_model==='rocketbox'&&
+  (centeredAvatar||exportedSettings.layout==='side_by_side')&&
+  typeof avatarPanelWidth==='number'&&avatarPanelWidth>=.2&&avatarPanelWidth<=.45
+  ? {panelWidth:avatarPanelWidth,centered:centeredAvatar,close:!centeredAvatar&&!!exportedSettings.close_panel,
+     fps:typeof exportFps==='number'&&exportFps>=12&&exportFps<=120?exportFps:undefined}
   : undefined;
  const coverage=settings.engine==='neural'?null:mode==='text'?sequence:job?.translation;
  return <div className={`app ${internal?'':'streamlined'}`}><aside><a className="brand" href="#" onClick={()=>setPage('studio')}><span className="brand-icon">S</span><span>SignBridge <b>UZ</b><small>OVOZDAN TUSHUNISHGA</small></span></a><nav>{[['studio','◈','Tarjima studiyasi'],['history','◷','Mening fayllarim']].map(([key,icon,label])=><button disabled={working} key={key} className={page===key||(key==='studio'&&page==='library')?'active':''} onClick={()=>{setPage(key);setDemo(false);setSelected(null);setPlaying(false);setTime(0)}}><span>{icon}</span>{label}</button>)}<details className="secondary-nav"><summary>Qo‘shimcha vositalar</summary>{[['corpus','ASL manbalari'],['settings','Sozlamalar']].map(([key,label])=><button disabled={working} key={key} className={page===key?'active':''} onClick={()=>{setPage(key);setPlaying(false);media.current?.pause()}}>{label}</button>)}</details></nav><div className="sidebar-note"><span className="pill">TADQIQOT PROTOTIPI</span><h3>Tushunish uchun ko‘prik.</h3><p>Texnik natija va ishoraning lingvistik tasdig‘i alohida tekshiriladi.</p></div><small className="local">● Mahalliy ishlov · CPU</small></aside><main><header><span>{!internal?'SignBridge UZ':page==='studio'?'Studiya':page==='history'?'Mening fayllarim':page==='corpus'?'ASL video kutubxonasi':page==='library'?'Avatar ijrosi':'Sozlamalar'}</span><span className="status">{health?'● Server ulangan':'○ Server bilan aloqa yo‘q · qayta tekshirilmoqda'}</span></header><div className="content"><div className="intro"><span className="eyebrow">SIGNBRIDGE UZ</span><h1>{page==='studio'?'Har bir ovoz tushunarli bo‘lsin.':page==='history'?'Fayllaringiz va tayyor natijalar.':page==='corpus'?'1 739 video. Qidiriladigan ASL kutubxonasi.':page==='library'?'Yangi avatar va vaqtli ijro.':'Sizga mos ijro.'}</h1><p>Video yoki audio yuklang. Tarjimonli natijani ko‘ring va MP4 yuklab oling.</p></div>{error&&<div className="alert" role="alert">{error}<button aria-label="Xabarni yopish" onClick={()=>setError('')}>×</button></div>}

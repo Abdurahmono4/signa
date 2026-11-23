@@ -5,7 +5,7 @@ export type TimedCaption=SubtitleInterval&{text:string};
 type Recording=TimedCaption&{supported:boolean;video_url?:string|null;timing_source?:string|null};
 type PlayerProps={src:string;className?:string;subtitleIntervals?:readonly SubtitleInterval[];
  sourceCaptions?:readonly TimedCaption[];sourceRecordings?:readonly Recording[];timingScale?:number;
- avatarReview?:{panelWidth:number;figureHeight:number;fps:number}};
+ avatarReview?:{panelWidth:number;centered:boolean;close:boolean;fps?:number}};
 
 function formatTime(time:number){
  const seconds=Math.floor(time);
@@ -39,12 +39,14 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
   let callback:number|undefined;
   const draw=()=>{
    if(media.readyState<2)return;
-   const width=Math.round(media.videoWidth*avatarReview.panelWidth);
-   const height=Math.round(media.videoHeight*avatarReview.figureHeight);
+   const width=2*Math.round(media.videoWidth*avatarReview.panelWidth/2);
+   const figureWidth=avatarReview.close?Math.max(width,2*Math.round(media.videoWidth*.4/2)):width;
+   const height=Math.min(media.videoHeight,2*Math.round(figureWidth*.75/2));
    if(width<1||height<1)return;
    if(canvas.width!==width)canvas.width=width;
    if(canvas.height!==height)canvas.height=height;
-   context.drawImage(media,media.videoWidth-width,Math.round((media.videoHeight-height)/2),
+   const x=avatarReview.centered?(media.videoWidth-width)/2:media.videoWidth-width;
+   context.drawImage(media,x,Math.round((media.videoHeight-height)/2),
     width,height,0,0,width,height);
   };
   const redraw=()=>{draw();callback=media.requestVideoFrameCallback(redraw)};
@@ -60,7 +62,7 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
 
  function stepFrame(direction:number){
   const media=video.current;
-  if(!media||!avatarReview||!duration)return;
+  if(!media||!avatarReview?.fps||!duration)return;
   media.pause();
   const {fps}=avatarReview;
   const frame=Math.floor(media.currentTime*fps+1e-4)+direction;
@@ -96,10 +98,10 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
   </div>
   {zoom&&avatarReview&&<div className="avatar-frame-review">
    <canvas ref={zoomCanvas} role="img" aria-label="Avatar qo‘llari va yuzi yaqin ko‘rinishda"/>
-   <div className="actions" role="group" aria-label="Kadrma-kadr ko‘rish">
+   {avatarReview.fps&&<div className="actions" role="group" aria-label="Kadrma-kadr ko‘rish">
     <button type="button" disabled={!duration} onClick={()=>stepFrame(-1)}>← Oldingi kadr</button>
     <button type="button" disabled={!duration} onClick={()=>stepFrame(1)}>Keyingi kadr →</button>
-   </div>
+   </div>}
   </div>}
   {reference&&<details className="result-source-recording" onToggle={e=>{
     if(e.currentTarget.open&&video.current){
