@@ -37,6 +37,29 @@ for(const side of ['L','R']){
  assert.ok(pos(`Bip01_${side}_Hand`).y>pos(`Bip01_${side}_Forearm`).y+.08,`${side} elbow rotation must lift its wrist`);
 }
 calibrationMixer.stopAllAction();calibrationMixer.uncacheRoot(naturalModel);
+// Independent FK control: turn the shoulder out of the image plane, then
+// bend the elbow in its local plane. Swapping the rotations changes the wrist.
+let maxWristError=0;
+for(const side of ['L','R']){
+ const frame=Array(133).fill(0),left=side==='L';
+ const yaw=left?.43:-.37,bend=left?.82:-.71;
+ frame[left?13:16]=yaw;frame[left?20:23]=bend;
+ const control=createRocketboxClip(naturalModel,{fps:24,frames:[frame]});
+ calibrationMixer.clipAction(control).play();calibrationMixer.update(0);naturalModel.updateMatrixWorld(true);
+ for(const arm of ['L','R']){
+  const prefix='Bip01_'+arm+'_',sign=arm==='L'?1:-1;
+  const u=bindLengths.get(prefix+'Forearm'),v=bindLengths.get(prefix+'Hand');
+  const y=arm===side?yaw:0,z=arm===side?bend:0;
+  const reach=sign*(u+v*Math.cos(z));
+  const expected=new THREE.Vector3(reach*Math.cos(y),sign*v*Math.sin(z),-reach*Math.sin(y));
+  const actual=pos(prefix+'Hand').sub(pos(prefix+'UpperArm'));
+  const error=actual.distanceTo(expected);
+  assert.ok(error<.001,arm+' wrist FK error in meters: '+error);
+  maxWristError=Math.max(maxWristError,error);
+ }
+ calibrationMixer.stopAllAction();calibrationMixer.uncacheRoot(naturalModel);
+}
+console.log('Shoulder/elbow FK maximum wrist error (mm):',maxWristError*1000);
 const clip=createRocketboxClip(naturalModel,motion);const mixer=new THREE.AnimationMixer(naturalModel);
 const playback=new AvatarPlayback(mixer),poses=[];
 const rest=[];naturalModel.traverse(node=>{if(node.isBone)rest.push(...node.quaternion.toArray())});
