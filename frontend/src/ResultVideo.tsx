@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {flushSync} from 'react-dom';
 
 export type SubtitleInterval={start:number;end:number};
 export type TimedCaption=SubtitleInterval&{text:string};
@@ -54,16 +55,22 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
    context.drawImage(media,x,Math.round((media.videoHeight-height)/2),
     width,height,0,0,width,height);
   };
-  const redraw=()=>{draw();callback=media.requestVideoFrameCallback(redraw)};
-  const events=['loadeddata','seeked','timeupdate'] as const;
+  const tracksFrames=typeof media.requestVideoFrameCallback==='function';
+  const redraw:VideoFrameRequestCallback=(_,frame)=>{
+   draw();
+   // Commit the counter in the same paint as the canvas, including on slow playback.
+   if(fps&&!media.paused&&!media.seeking)flushSync(()=>setCurrentTime(Math.round(frame.mediaTime*fps)/fps));
+   callback=media.requestVideoFrameCallback(redraw);
+  };
+  const events=tracksFrames?['loadeddata','seeked']:['loadeddata','seeked','timeupdate'];
   for(const event of events)media.addEventListener(event,draw);
   draw();
-  if(typeof media.requestVideoFrameCallback==='function')callback=media.requestVideoFrameCallback(redraw);
+  if(tracksFrames)callback=media.requestVideoFrameCallback(redraw);
   return ()=>{
    if(callback!==undefined)media.cancelVideoFrameCallback(callback);
    for(const event of events)media.removeEventListener(event,draw);
   };
- },[zoom,avatarReview]);
+ },[zoom,avatarReview,fps]);
 
  function stepFrame(direction:number){
   const media=video.current;
@@ -91,7 +98,10 @@ function Player({src,className,subtitleIntervals=[],sourceCaptions=[],sourceReco
    resume.current=0;
   }}
   onRateChange={e=>setReviewRate(e.currentTarget.playbackRate)}
-  onTimeUpdate={e=>{if(expanded||zoom)setCurrentTime(e.currentTarget.currentTime)}}
+  onTimeUpdate={e=>{
+   const media=e.currentTarget;
+   if((expanded||zoom)&&(!zoom||!fps||media.paused||typeof media.requestVideoFrameCallback!=='function'))setCurrentTime(media.currentTime);
+  }}
   onSeeked={e=>{if(expanded||zoom)setCurrentTime(e.currentTarget.currentTime)}}
   onError={()=>{setDuration(0);setRetrying(false);setError(video.current?.error?.code===3||video.current?.error?.code===4?'Brauzer videoni ijro eta olmadi. MP4 faylini yuklab olib oching yoki qayta urinib ko‘ring.':'Video yuklanayotganda aloqa uzildi. Tayyor natijani qayta oching.')}}/>
   <div className="actions" role="group" aria-label="Harakatni batafsil ko‘rish">
