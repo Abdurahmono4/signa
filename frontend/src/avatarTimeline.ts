@@ -21,8 +21,11 @@ export function presentationAt<T extends MotionInterval>(items:readonly T[],time
  // A trip down to idle and back adds two wrist excursions to a single pause.
  const gap=next?next.start-previousEnd:Infinity;
  if(previous&&next&&!next.blockedBefore&&gap<=Math.max(fade*2,.9))return {from:end,to:start,mix:smooth((time-previousEnd)/(next.start-previousEnd))};
- if(previous&&time-previousEnd<fade)return {from:end,to:null,mix:smooth((time-previousEnd)/fade)};
- if(next&&next.start-time<fade)return {from:null,to:start,mix:smooth(1-(next.start-time)/fade)};
+ // In a short blocked gap both transitions must meet at rest. Overlapping
+ // full-length fades would switch abruptly from one handshape to the next.
+ const window=previous&&next?Math.min(fade,gap/2):fade;
+ if(previous&&time-previousEnd<window)return {from:end,to:null,mix:smooth((time-previousEnd)/window)};
+ if(next&&next.start-time<window)return {from:null,to:start,mix:smooth(1-(next.start-time)/window)};
  return {from:null,to:null,mix:0};
 }
 export function validateIntervals(items:readonly MotionInterval[],outputDuration:number){

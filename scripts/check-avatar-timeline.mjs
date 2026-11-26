@@ -44,3 +44,12 @@ assert.equal(bridge.from.item,medium[0]);
 assert.equal(bridge.to.item,medium[1]);
 assert.ok(Math.abs(bridge.mix-.5)<1e-9);
 assert.equal(presentationAt([medium[0],{...medium[1],blockedBefore:true}],1.4).from,null);
+for(const gap of [.04,.12,.3,.47]){
+ const items=[medium[0],{...medium[1],start:1+gap,blockedBefore:true}];
+ const middle=1+gap/2;
+ const before=presentationAt(items,middle-.00001),after=presentationAt(items,middle+.00001);
+ assert.equal(before.from.item,items[0]);assert.equal(before.to,null);
+ assert.equal(after.from,null);assert.equal(after.to.item,items[1]);
+ assert.ok(before.mix>.99999&&after.mix<.00001,'Both hands must reach rest at the boundary');
+ assert.equal(presentationAt(items,items[1].start).from.localTime,0);
+}

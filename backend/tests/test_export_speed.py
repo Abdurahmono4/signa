@@ -32,13 +32,13 @@ def test_export_cache_requires_same_content_model_revision_and_existing_result()
                    language='en', speech_model='small', ext='.mp4', kind='video',
                    transcript_revision=1, probe={'validation':'streams-v1'},
                    settings=dict(resolution=1080, subtitles=True, layout='side_by_side',
-                                 close_panel=True, size=.30, appearance='navy-v1', engine='neural', motion_revision='wrist-transition-v9', capture_quality='high'))
+                                 close_panel=True, size=.30, appearance='navy-v1', engine='neural', motion_revision='rest-transition-v10', capture_quality='high'))
         save_job(job)
         assert main.reusable_export('test-digest', '.mp4', 'small')['id'] == ident
         job['settings']['motion_revision'] = 'jaw-retarget-v6'
         save_job(job)
         assert main.reusable_export('test-digest', '.mp4', 'small') is None
-        job['settings']['motion_revision'] = 'wrist-transition-v9'
+        job['settings']['motion_revision'] = 'rest-transition-v10'
         save_job(job)
         assert main.reusable_export('different', '.mp4', 'small') is None
         assert main.reusable_export('test-digest', '.mp4', 'base') is None

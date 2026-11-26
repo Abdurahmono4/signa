@@ -229,7 +229,7 @@ def reusable_export(digest, ext, model):
                 or settings.get('layout') != 'side_by_side'
                 or settings.get('close_panel') != (job.get('kind') == 'video')
                 or settings.get('size') != (.30 if job.get('kind') == 'video' else .40)
-                or settings.get('motion_revision') != 'wrist-transition-v9'
+                or settings.get('motion_revision') != 'rest-transition-v10'
                 or settings.get('capture_quality') != 'high'
                 or settings.get('appearance') != 'navy-v1' or settings.get('engine') != 'neural'):
             continue
@@ -383,7 +383,7 @@ def cancel(id:str,data:RenderSessionRequest|None=None):
     return job
 class RenderSettings(BaseModel):
     avatar_model:Literal['legacy','rocketbox']='legacy'
-    motion_revision:Literal['arm-reference-v2','relaxed-idle-v3','bounded-cadence-v4','signing-frame-v5','jaw-retarget-v6','aligned-motion-v7','adaptive-cadence-v8','wrist-transition-v9']|None=None
+    motion_revision:Literal['arm-reference-v2','relaxed-idle-v3','bounded-cadence-v4','signing-frame-v5','jaw-retarget-v6','aligned-motion-v7','adaptive-cadence-v8','wrist-transition-v9','rest-transition-v10']|None=None
     appearance:Literal['navy-v1']|None=None
     close_panel:bool=False
     native_human:bool=False
@@ -420,7 +420,7 @@ def render_start(id:str,settings:RenderSettings):
         neural_summary={key:motion_plan.get(key,0) for key in ['generated_phrases','unsupported_phrases','caption_words','total_words']}
         neural_summary['partial']=bool(neural_summary['unsupported_phrases'])
     render_fps=24 if settings.avatar_model=='rocketbox' else FPS
-    if settings.avatar_model=='rocketbox' and settings.motion_revision in ('adaptive-cadence-v8','wrist-transition-v9'):
+    if settings.avatar_model=='rocketbox' and settings.motion_revision in ('adaptive-cadence-v8','wrist-transition-v9','rest-transition-v10'):
         render_fps=rocketbox_capture_fps(motion_plan.get('items', []))
     count=math.ceil(job['duration']*scale*render_fps)
     # Claim a session only after validation; two tabs must not both start from
